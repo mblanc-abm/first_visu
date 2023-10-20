@@ -4,6 +4,8 @@ from datetime import date, time, datetime
 import xarray as xr
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
+from matplotlib.colors import TwoSlopeNorm
+
 
 # FUNCTIONS
 #========================================================================================================================================
@@ -110,11 +112,11 @@ def plot_IUH(fname, nlev):
     iuh = IUH(fname)
     lats = dset.variables['lat']
     lons = dset.variables['lon']
-    levels = np.linspace(np.min(iuh), np.max(iuh), nlev)
+    norm = TwoSlopeNorm(vmin=np.min(iuh), vcenter=0, vmax=np.max(iuh))
     
     plt.figure()
     ax = plt.axes(projection=ccrs.PlateCarree())
-    plt.contourf(lons, lats, iuh, cmap=plt.cm.coolwarm, levels=levels, transform=ccrs.PlateCarree())
+    plt.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=nlev, transform=ccrs.PlateCarree())
     #ax.add_feature(ocean, linewidth=0.2)
     #ax.add_feature(lakes)
     #ax.add_feature(rivers, linewidth=0.2)
@@ -133,7 +135,7 @@ day = date(2021, 7, 13) # date to be filled
 repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 filename = "swisscut_lffd" + day.strftime("%Y%m%d") # without .nc
 
-hours = np.array(range(11,16)) # to be filled according to the considered period of the day
+hours = np.array(range(11,15)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 
@@ -149,4 +151,3 @@ for t in alltimes:
 # plot the chosen time shots
 for file in allfiles:
     plot_IUH(file, 23)
-
