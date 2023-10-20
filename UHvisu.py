@@ -1,28 +1,11 @@
 import numpy as np
-import matplotlib as cm
 import matplotlib.pyplot as plt
 from datetime import date, time, datetime
 import xarray as xr
+import cartopy.feature as cfeature
+import cartopy.crs as ccrs
 
-#import files with wind variables U, V, W of a certain day, considering switzerland
-day = date(2021, 7, 12) # to be filled
-
-repo_path = "/scratch/snx3000/mblanc/UHfiles/"
-filename = "swisscut_lffd" + day.strftime("%Y%m%d") # without .nc
-
-hours = np.array(range(12,24)) # to be filled according to the output names
-mins = 0 # to be filled according to the output names
-secs = 0 # to be filled according to the output names
-
-alltimes = [] # all times within the considered period
-for h in hours:
-    t = time(h, mins, secs)
-    alltimes.append(t.strftime("%H%M%S"))
-        
-allfiles = [] # all files to be plotted in the directory
-for time in alltimes:
-    allfiles.append(repo_path + filename + time + "p.nc")
-
+# FUNCTIONS
 #========================================================================================================================================
 
 # function computing the distance from Earth's centre depending on the latitude and altitude
@@ -98,7 +81,7 @@ def IUH(fname):
     iuh = np.zeros(np.shape(dset.variables['lon']))
     zeta, uh = zeta_UH_plev(fname, 4)
     dp =  (pres[5] - pres[3])/2
-    iuh = iuh + uh*L*dp/pres[4]
+    iuh = iuh + uh*L*dp/pres[4] #in our simple framework, dz=-L*dp/p (here with positive sign because we reverted the integral bounds)
     zeta, uh = zeta_UH_plev(fname, 5)
     dp =  (pres[6] - pres[4])/2
     iuh = iuh + uh*L*dp/pres[5]
@@ -106,16 +89,64 @@ def IUH(fname):
     return iuh
 
 
+#compute and plot the one time shot IUH 2D field on the Swiss map
+def plot_IUH(fname, nlev):
+    #input: fname (str): complete file path (a single time shot)
+    #       nlev (int): number of levels in the colorbar
+    #output: plot of the 2D field IUH over Switzerland
+    
+    dtstr = fname[-18:-4] #adjust depending on the filename format !
+    dtobj = datetime.strptime(dtstr, "%Y%m%d%H%M%S")
+    dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
+    
+    resol = '10m'  # use data at this scale
+    bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
+    #land = cfeature.NaturalEarthFeature('physical', 'land', scale=resol, edgecolor='k', facecolor=cfeature.COLORS['land'])
+    #ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
+    #lakes = cfeature.NaturalEarthFeature('physical', 'lakes', scale=resol, edgecolor='b', facecolor=cfeature.COLORS['water'])
+    #rivers = cfeature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', scale=resol, edgecolor='b', facecolor='none')
+    
+    dset = xr.open_dataset(fname)
+    iuh = IUH(fname)
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
+    levels = np.linspace(np.min(iuh), np.max(iuh), nlev)
+    
+    plt.figure()
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    plt.contourf(lons, lats, iuh, cmap=plt.cm.coolwarm, levels=levels, transform=ccrs.PlateCarree())
+    #ax.add_feature(ocean, linewidth=0.2)
+    #ax.add_feature(lakes)
+    #ax.add_feature(rivers, linewidth=0.2)
+    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+    plt.colorbar(orientation='horizontal', label="775-550 hPa IUH (m^2/s^2)")
+    plt.title(dtdisp)
+
 #================================================================================================================================
 
-# test of the function
-iuh7 = IUH(allfiles[7])
-iuh6 = IUH(allfiles[6])
-iuh5 = IUH(allfiles[5])
-iuh4 = IUH(allfiles[4])
+# MAIN
+#================================================================================================================================
 
-levels = np.linspace(-140, 200, 23)
-plt.figure()
-plt.contourf(iuh7, cmap=plt.cm.coolwarm, levels=levels)
-plt.colorbar(orientation='horizontal', label="IUH (m^2/s^2)")
-plt.title("12/07/2021 - 19:00:00")
+#import files with wind variables U, V, W of a certain day, considering switzerland
+day = date(2021, 7, 13) # date to be filled
+
+repo_path = "/scratch/snx3000/mblanc/UHfiles/"
+filename = "swisscut_lffd" + day.strftime("%Y%m%d") # without .nc
+
+hours = np.array(range(11,16)) # to be filled according to the considered period of the day
+mins = 0 # to be filled according to the output names
+secs = 0 # to be filled according to the output names
+
+alltimes = [] # all times within the considered period
+for h in hours:
+    t = time(h, mins, secs)
+    alltimes.append(t.strftime("%H%M%S"))
+        
+allfiles = [] # all files to be plotted in the directory
+for t in alltimes:
+    allfiles.append(repo_path + filename + t + "p.nc")
+
+# plot the chosen time shots
+for file in allfiles:
+    plot_IUH(file, 23)
+
