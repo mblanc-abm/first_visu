@@ -110,9 +110,10 @@ def plot_IUH(fname, nlev):
     
     dset = xr.open_dataset(fname)
     iuh = IUH(fname)
+    absmax = max(np.max(iuh), abs(np.min(iuh)))
     lats = dset.variables['lat']
     lons = dset.variables['lon']
-    norm = TwoSlopeNorm(vmin=np.min(iuh), vcenter=0, vmax=np.max(iuh))
+    norm = TwoSlopeNorm(vmin=-absmax, vcenter=0, vmax=absmax)
     
     plt.figure()
     ax = plt.axes(projection=ccrs.PlateCarree())
@@ -135,7 +136,7 @@ day = date(2021, 7, 13) # date to be filled
 repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 filename = "swisscut_lffd" + day.strftime("%Y%m%d") # without .nc
 
-hours = np.array(range(11,15)) # to be filled according to the considered period of the day
+hours = np.array(range(11,16)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 
