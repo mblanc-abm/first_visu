@@ -185,4 +185,11 @@ anim = FuncAnimation(fig, animate, frames=len(allfiles), repeat=False)
 anim.save('animation.mp4')
 
 
-    
+#=======================================================================================================================================
+## TESTS WITH np.gradient() ##
+
+dset = xr.open_dataset("/scratch/snx3000/mblanc/UHfiles/swisscut_lffd20210712160000p.nc")
+v = np.array(dset['V'][0][5])
+lons = np.array(dset.variables['lon'])
+lats = np.array(dset.variables['lat'])
+dvdlat = np.gradient(v, lats, axis=1)
