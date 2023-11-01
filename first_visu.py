@@ -185,11 +185,40 @@ anim = FuncAnimation(fig, animate, frames=len(allfiles), repeat=False)
 anim.save('animation.mp4')
 
 
-#=======================================================================================================================================
-## TESTS WITH np.gradient() ##
+#========================================================================================================================================
+## checking dx and dy variation ##
 
-dset = xr.open_dataset("/scratch/snx3000/mblanc/UHfiles/swisscut_lffd20210712160000p.nc")
-v = np.array(dset['V'][0][5])
-lons = np.array(dset.variables['lon'])
-lats = np.array(dset.variables['lat'])
-dvdlat = np.gradient(v, lats, axis=1)
+Rm = 6370000
+dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20160309170000.nc")
+lats = dset.variables['lat']
+lons = dset.variables['lon']
+
+dlon = np.deg2rad(np.lib.pad(lons, ((0,0),(0,1)), mode='constant', constant_values=np.nan)[:,1:] - np.lib.pad(lons, ((0,0),(1,0)), mode='constant', constant_values=np.nan)[:,:-1])
+dlat =  np.deg2rad(np.lib.pad(lats, ((0,1),(0,0)), mode='constant', constant_values=np.nan)[1:,:] - np.lib.pad(lats, ((1,0),(0,0)), mode='constant', constant_values=np.nan)[:-1,:])
+dx = np.array(Rm*np.cos(np.deg2rad(lats))*dlon)
+dy = np.array(Rm*dlat)
+
+print("min(dx)=", np.nanmin(dx))
+print("mean(dx)=", np.nanmean(dx))
+print("max(dx)=", np.nanmax(dx))
+print("min(dy)=", np.nanmin(dy))
+print("mean(dy)=", np.nanmean(dy))
+print("max(dy)=", np.nanmax(dy))
+
+
+#========================================================================================================================================
+## checking beneath surface pressure levels ##
+
+dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20210712190000p.nc")
+pres = np.array(dset.variables['pressure'])
+dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20130712190000.nc")
+ps = np.array(dset['PS'][0])
+
+pbin = []
+for p in pres:
+    pbin.append(ps < p)
+
+for i in range(np.shape(pbin)[0]):
+    print("p=", pres[i], ": ", np.sum(pbin[i]), " grid points beneath surface (where p>ps)")
+
+print("out of", np.size(pbin[0]))

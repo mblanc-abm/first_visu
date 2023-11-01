@@ -131,12 +131,12 @@ def plot_IUH(fname, nlev):
 #================================================================================================================================
 
 #import files with wind variables U, V, W of a certain day, considering switzerland
-day = date(2021, 7, 13) # date to be filled
+day = date(2021, 7, 12) # date to be filled
 
 repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 filename = "swisscut_lffd" + day.strftime("%Y%m%d") # without .nc
 
-hours = np.array(range(11,16)) # to be filled according to the considered period of the day
+hours = np.array(range(17,20)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 
