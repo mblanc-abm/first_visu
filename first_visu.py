@@ -108,11 +108,11 @@ plt.show()
 ## filenames preparation
 
 day = date(2019, 6, 15) # to be filled
-varout = "HAIL" # to be filled, variable name in the file names
-varin = "DHAIL_MX" # to be filled, variable name within the netcdf files
+varout = "PREC" # to be filled, variable name in the file names
+varin = "TOT_PREC" # to be filled, variable name within the netcdf files
 
 repo_path = "/scratch/snx3000/mblanc/" + day.strftime("%Y%m%d") + "/"
-filename = "swisscut_" + varout + "lffd" + day.strftime("%Y%m%d") # without .nc
+filename = "largecut_" + varout + "lffd" + day.strftime("%Y%m%d") # without .nc
 
 hours = np.array(range(0,24)) # to be filled according to the output names
 mins = np.array(range(0,60,5)) # to be filled according to the output names
@@ -125,8 +125,8 @@ for h in hours:
         alltimes.append(t.strftime("%H%M%S"))
         
 allfiles = [] # all files to be plotted in the directory
-for time in alltimes:
-    allfiles.append(repo_path + filename + time + ".nc")
+for t in alltimes:
+    allfiles.append(repo_path + filename + t + ".nc")
 
 ## animated plot ##
 
@@ -140,7 +140,7 @@ rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerline
 
 # first image on screen
 dset0 = xr.open_dataset(allfiles[0])
-PREC0 = dset0.variables[varin][0, :, :] # variable to be filled
+PREC0 = dset0.variables[varin][0]
 lats = dset0.variables['lat']
 lons = dset0.variables['lon']
 dt0str = day.strftime("%Y%m%d") + alltimes[0]
@@ -182,7 +182,7 @@ def animate(i):
     return cont
 
 anim = FuncAnimation(fig, animate, frames=len(allfiles), repeat=False)
-anim.save('animation.mp4')
+anim.save('20190615_PREC.mp4')
 
 
 #========================================================================================================================================

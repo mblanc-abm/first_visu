@@ -107,38 +107,43 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     
     # IUH data
     dset = xr.open_dataset(fname_s)
-    iuh = IUH(fname_p, fname_s)
-    absmax = max(np.max(iuh), abs(np.min(iuh)))
+    iuh = np.array(IUH(fname_p, fname_s))
+    iuh[abs(iuh)<5] = np.nan # mask regions of very small IUH to smoothen the background
+    iuh_max = 200 # set here the maximum (or minimum in absolute value) IUH that you want to display
     lats = dset.variables['lat']
     lons = dset.variables['lon']
-    norm = TwoSlopeNorm(vmin=-absmax, vcenter=0, vmax=absmax)
+    norm = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
     
     # Precipitation data
     dset = xr.open_dataset(prec_fname)
-    prec = dset['TOT_PREC'][0]
-    levels_prec = np.linspace(0, float(np.max(prec)), 9) # adjust the number of levels at your convenience
+    prec = np.array(dset['TOT_PREC'][0])
+    prec[prec<0.08] = np.nan # mask regions of very small precipitation to smoothen the backgroud
+    prec_max = 12 # set here the maximum rain rate you want to display
+    levels_prec = np.linspace(0, prec_max, 22) # adjust the number of levels at your convenience
     
     # Hail data
     dset = xr.open_dataset(hail_fname)
-    hail = dset['DHAIL_MX'][0]
-    levels_hail = np.linspace(0, float(np.max(hail)), 9) # adjust the number of levels at your convenience
+    hail = np.array(dset['DHAIL_MX'][0])
+    hail[hail<0.5] = np.nan # mask regions of very small hail to smoothen the backgroud
+    hail_max = 40 # set here the maximum hail diameter you want to display
+    levels_hail = np.linspace(0, hail_max, 22) # adjust the number of levels at your convenience
     
     # plot
     fig = plt.figure(figsize=(6,12))
     
     ax = fig.add_subplot(3, 1, 1, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=21, transform=ccrs.PlateCarree())
+    cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=22, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     plt.colorbar(cont, orientation='horizontal', label="IUH (m^2/s^2)")
     plt.title(dtdisp)
     
     ax = fig.add_subplot(3, 1, 2, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, prec, levels=levels_prec, transform=ccrs.PlateCarree())
+    cont = ax.contourf(lons, lats, prec, cmap="Reds", levels=levels_prec, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     plt.colorbar(cont, orientation='horizontal', label="Total precipitation amount (kg/m^2)")
     
     ax = fig.add_subplot(3, 1, 3, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, hail, levels=levels_hail, transform=ccrs.PlateCarree())
+    cont = ax.contourf(lons, lats, hail, cmap="Reds", levels=levels_hail, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     plt.colorbar(cont, orientation='horizontal', label="Maximum hail diameter (mm)")   
     
@@ -149,8 +154,8 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
 #================================================================================================================================
 
 #import files with wind variables U, V, W of a certain day, considering switzerland
-day = date(2021, 7, 13) # date to be filled
-hours = np.array(range(11,16)) # to be filled according to the considered period of the day
+day = date(2021, 6, 20) # date to be filled
+hours = np.array(range(12,20)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 
