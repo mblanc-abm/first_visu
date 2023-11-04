@@ -138,12 +138,12 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     plt.title(dtdisp)
     
     ax = fig.add_subplot(3, 1, 2, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, prec, cmap="Reds", levels=levels_prec, transform=ccrs.PlateCarree())
+    cont = ax.contourf(lons, lats, prec, cmap="plasma", levels=levels_prec, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     plt.colorbar(cont, orientation='horizontal', label="Total precipitation amount (kg/m^2)")
     
     ax = fig.add_subplot(3, 1, 3, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, hail, cmap="Reds", levels=levels_hail, transform=ccrs.PlateCarree())
+    cont = ax.contourf(lons, lats, hail, cmap="plasma", levels=levels_hail, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     plt.colorbar(cont, orientation='horizontal', label="Maximum hail diameter (mm)")   
     
@@ -154,8 +154,8 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
 #================================================================================================================================
 
 #import files with wind variables U, V, W of a certain day, considering switzerland
-day = date(2021, 6, 20) # date to be filled
-hours = np.array(range(12,20)) # to be filled according to the considered period of the day
+day = date(2021, 7, 13) # date to be filled
+hours = np.array(range(11,16)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 
