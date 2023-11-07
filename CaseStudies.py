@@ -109,7 +109,7 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     dset = xr.open_dataset(fname_s)
     iuh = np.array(IUH(fname_p, fname_s))
     iuh[abs(iuh)<5] = np.nan # mask regions of very small IUH to smoothen the background
-    iuh_max = 200 # set here the maximum (or minimum in absolute value) IUH that you want to display
+    iuh_max = 170 # set here the maximum (or minimum in absolute value) IUH that you want to display
     lats = dset.variables['lat']
     lons = dset.variables['lon']
     norm = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
@@ -158,12 +158,13 @@ day = date(2021, 7, 13) # date to be filled
 hours = np.array(range(11,16)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
+cut = "swisscut" # to be filled according to the cut type
 
 repo_path = "/scratch/snx3000/mblanc/UHfiles/"
-filename_p = "swisscut_lffd" + day.strftime("%Y%m%d") # without .nc
-filename_s = "swisscut_PSlffd" + day.strftime("%Y%m%d") # without .nc
-filename_prec = "swisscut_PREClffd" + day.strftime("%Y%m%d") # without .nc
-filename_hail = "swisscut_HAILlffd" + day.strftime("%Y%m%d") # without .nc
+filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
+filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
+filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
+filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
 
 alltimes = [] # all times within the considered period
 for h in hours:
