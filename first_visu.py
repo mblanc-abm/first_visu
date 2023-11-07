@@ -107,16 +107,17 @@ plt.show()
 
 ## filenames preparation
 
-day = date(2019, 6, 15) # to be filled
+day = date(2019, 6, 14) # to be filled
 varout = "PREC" # to be filled, variable name in the file names
 varin = "TOT_PREC" # to be filled, variable name within the netcdf files
-
-repo_path = "/scratch/snx3000/mblanc/" + day.strftime("%Y%m%d") + "/"
-filename = "largecut_" + varout + "lffd" + day.strftime("%Y%m%d") # without .nc
 
 hours = np.array(range(0,24)) # to be filled according to the output names
 mins = np.array(range(0,60,5)) # to be filled according to the output names
 secs = 0 # to be filled according to the output names
+
+repo_path = "/scratch/snx3000/mblanc/" + day.strftime("%Y%m%d") + "/"
+filename = "largecut_" + varout + "lffd" + day.strftime("%Y%m%d") # without .nc
+anim_name = day.strftime("%Y%m%d") + "_" + varout + ".mp4"
 
 alltimes = [] # all times within a day, by steps of 5 min
 for h in hours:
@@ -140,24 +141,21 @@ rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerline
 
 # first image on screen
 dset0 = xr.open_dataset(allfiles[0])
-PREC0 = dset0.variables[varin][0]
+PREC0 = np.array(dset0[varin][0])
+PREC0[PREC0<0.2] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
 lats = dset0.variables['lat']
 lons = dset0.variables['lon']
 dt0str = day.strftime("%Y%m%d") + alltimes[0]
 dt0obj = datetime.strptime(dt0str, "%Y%m%d%H%M%S")
 
-# find variable maximum over the whole area and considered period
-maxs = []
-for fpath in allfiles:
-    dset = xr.open_dataset(fpath)
-    var = dset.variables[varin][0, :, :]
-    maxs.append(float(np.max(var)))
-MAX = max(maxs)
-levels = np.linspace(0, MAX, 9) # adjust the number of levels at your convenience
+if varout=="PREC":
+   levels = np.linspace(0, 12, 22) # adjust the number of levels at your convenience
+elif varout=="HAIL" or varout =="DHAIL":
+   levels = np.linspace(0, 40, 22) # adjust the number of levels at your convenience
 
 fig = plt.figure()
 ax = plt.axes(projection=ccrs.PlateCarree())
-cont = plt.contourf(lons, lats, PREC0, levels=levels, transform=ccrs.PlateCarree())
+cont = plt.contourf(lons, lats, PREC0, levels=levels, cmap="plasma", transform=ccrs.PlateCarree())
 ax.add_feature(ocean, linewidth=0.2)
 ax.add_feature(lakes)
 ax.add_feature(rivers, linewidth=0.2)
@@ -174,15 +172,16 @@ def animate(i):
     dtstr = day.strftime("%Y%m%d") + alltimes[i]
     dtobj = datetime.strptime(dtstr, "%Y%m%d%H%M%S")
     dset = xr.open_dataset(allfiles[i])
-    PREC = dset.variables[varin][0, :, :]
+    PREC = np.array(dset[varin][0])
+    PREC[PREC<0.2] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
     for c in cont.collections:
         c.remove()  # removes only the contours, leaves the rest intact
-    cont = plt.contourf(lons, lats, PREC, levels=levels, transform=ccrs.PlateCarree())
+    cont = plt.contourf(lons, lats, PREC, levels=levels, cmap="plasma", transform=ccrs.PlateCarree())
     plt.title(dtobj.strftime("%d/%m/%Y %H:%M:%S"))
     return cont
 
 anim = FuncAnimation(fig, animate, frames=len(allfiles), repeat=False)
-anim.save('20190615_PREC.mp4')
+anim.save(anim_name)
 
 
 #========================================================================================================================================
