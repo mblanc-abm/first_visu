@@ -3,6 +3,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time as chrono
 from datetime import date, time, datetime
 import xarray as xr
 import cartopy.feature as cfeature
@@ -92,11 +93,10 @@ def IUH(fname_p, fname_s):
     return iuh_reg + iuh_irreg # fill in the holes so that IUH is defined at every single grid point
 
 
-#compute and plot the one time shot IUH 2D field on the Swiss map, together with the precipitatin and hail fields
+#compute and plot the one time shot IUH 2D field, together with the precipitatin and hail fields
 def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     #input: fname (str): complete file path (a single time shot)
-    #       nlev (int): number of levels in the colorbar
-    #output: plot of the 2D IUH, precipitation and hail fields over Switzerland
+    #output: plot of the 2D IUH
     
     dtstr = fname_p[-18:-4] #adjust depending on the filename format !
     dtobj = datetime.strptime(dtstr, "%Y%m%d%H%M%S")
@@ -148,17 +148,50 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     plt.colorbar(cont, orientation='horizontal', label="Maximum hail diameter (mm)")   
     
 
+
+#compute and plot the one time shot IUH 2D field
+def plot_IUH_1timeshot(fname_p, fname_s):
+    #input: fname (str): complete file path (a single time shot)
+    #output: plot of the 2D IUH,
+    
+    dtstr = fname_p[-18:-4] #adjust depending on the filename format !
+    dtobj = datetime.strptime(dtstr, "%Y%m%d%H%M%S")
+    dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
+    
+    resol = '10m'  # use data at this scale
+    bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
+    ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
+    
+    #data
+    dset = xr.open_dataset(fname_s)
+    iuh = np.array(IUH(fname_p, fname_s))
+    iuh[abs(iuh)<5] = np.nan # mask regions of very small IUH to smoothen the background
+    iuh_max = 170 # set here the maximum (or minimum in absolute value) IUH that you want to display
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
+    norm = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
+
+    # plot
+    plt.figure()
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    cont = plt.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=22, transform=ccrs.PlateCarree())
+    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+    ax.add_feature(ocean, linewidth=0.2)
+    plt.colorbar(cont, orientation='horizontal', label="IUH (m^2/s^2)")
+    plt.title(dtdisp)
+   
+
 #================================================================================================================================
 
 # MAIN
 #================================================================================================================================
 
 #import files with wind variables U, V, W of a certain day, considering switzerland
-day = date(2021, 7, 13) # date to be filled
-hours = np.array(range(11,16)) # to be filled according to the considered period of the day
+day = date(2021, 6, 21) # date to be filled
+hours = np.array(range(10,20)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
-cut = "swisscut" # to be filled according to the cut type
+cut = "largecut" # to be filled according to the cut type
 
 repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
@@ -184,3 +217,17 @@ for t in alltimes:
 # plot the chosen time shots
 for i in range(np.size(allfiles_p)):
     plot_IUH_prec_hail(allfiles_p[i], allfiles_s[i], allfiles_prec[i],  allfiles_hail[i])
+
+
+#========================================================================================================================================
+## measure computing time of whole domain IUH 2D field determination ##
+
+fname_p = "/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20190614220000p.nc"
+fname_s = "/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20190614220000.nc"
+plot_IUH_1timeshot(fname_p, fname_s)
+
+#t1 = chrono.time()
+#iuh = IUH(fname_p, fname_s)
+#t2 = chrono.time()
+#dur = t2 - t1
+#print(dur) 3.2 s
