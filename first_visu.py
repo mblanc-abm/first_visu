@@ -7,6 +7,7 @@ import cartopy
 import json
 from datetime import date, time, datetime
 from matplotlib.animation import FuncAnimation
+
  
 # hail cell masks
 dset = xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/cell_masks_20190707.nc")
@@ -106,17 +107,16 @@ plt.show()
 ## TIME-LAPS ANIMATION ##
 
 ## filenames preparation
-
-day = date(2019, 6, 14) # to be filled
-varout = "PREC" # to be filled, variable name in the file names
-varin = "TOT_PREC" # to be filled, variable name within the netcdf files
+day = date(2014, 6, 25) # to be filled
+varout = "HAIL" # to be filled, variable name in the file names
+varin = "DHAIL_MX" # to be filled, variable name within the netcdf files
 
 hours = np.array(range(0,24)) # to be filled according to the output names
 mins = np.array(range(0,60,5)) # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 
 repo_path = "/scratch/snx3000/mblanc/" + day.strftime("%Y%m%d") + "/"
-filename = "largecut_" + varout + "lffd" + day.strftime("%Y%m%d") # without .nc
+filename = "largecut_" + varout + "lffd" + day.strftime("%Y%m%d") # without .nc, to be filled according to the cut type
 anim_name = day.strftime("%Y%m%d") + "_" + varout + ".mp4"
 
 alltimes = [] # all times within a day, by steps of 5 min
@@ -221,3 +221,18 @@ for i in range(np.shape(pbin)[0]):
     print("p=", pres[i], ": ", np.sum(pbin[i]), " grid points beneath surface (where p>ps)")
 
 print("out of", np.size(pbin[0]))
+
+
+#========================================================================================================================================
+## checking geopotential height differences betweeen pressure levels ##
+
+dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20201231230000p.nc")
+Z = np.array(dset['FI'][0]/9.81)
+pres = np.array(dset.variables['pressure'])
+
+for i, p in enumerate(pres):
+    print("plev=", round(p/100), "hPa: min(Z)=", np.min(Z[i]), ", mean(Z)=", np.mean(Z[i]), ", max(Z)=", np.max(Z[i]))
+
+for i in range(7):
+    print("dplev=", round(pres[i]/100), "-", round(pres[i+1]/100), "hPa: min(dZ)=", np.min(Z[i]-Z[i+1]), ", mean(dZ)=", np.mean(Z[i]-Z[i+1]), ", max(dZ)=", np.max(Z[i]-Z[i+1]))
+
