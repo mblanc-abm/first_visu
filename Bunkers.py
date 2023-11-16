@@ -6,18 +6,22 @@ from datetime import date, time, datetime
 import xarray as xr
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
+from matplotlib.colors import TwoSlopeNorm
+from CaseStudies import IUH
 
 
 # GLOBAL VARIABLES AND FUNCTIONS
 #========================================================================================================================================
 
-# function computing the 0-6 km wind shear in magnitude and plotting the resulting shear magnitude 2D field on case studies
-def shear_magnitude(fname_p, fname_s, plot=False):
+# function computing the 0-6 km wind shear and plotting the resulting shear magnitude and IUH 2D fields on case study domain
+def vertical_wind_shear(fname_p, fname_s, plot=True, ret=False):
     #input: fname_p (str): complete file path containing the wind fields (3D)
     #       fname_s (str): complete file path containing the surface pressure (2D)
     #       plot (bool): plotting option
+    #       ret (bool): wind shear returning option
     #output: 2D 0-6 km wind shear magnitude field
-    #        if requested, plot
+    #        if requested, plots the wind shear magnitude together with the IUH
+    #        if requested, returns the wind shear vector
     
     dset = xr.open_dataset(fname_s)
     ps = dset['PS'][0] # 2D: lat, lon
@@ -29,9 +33,9 @@ def shear_magnitude(fname_p, fname_s, plot=False):
         lats = dataset.variables['lat']
         lons = dataset.variables['lon']
     
-    #upper bound
-    u_up = (u[2] + u[3])/2 # average between 400 hPa (~7 km) and 500 hPa (~5.4 km) winds
-    v_up = (v[2] + v[3])/2 # average between 400 hPa (~7 km) and 500 hPa (~5.4 km) winds
+    #upper bound, common to every grid point: average between 400 hPa (~7 km) and 500 hPa (~5.4 km) winds
+    u_up = (u[2] + u[3])/2
+    v_up = (v[2] + v[3])/2
     
     #lower bound: differs depending on topography
     surf_bin = ps > 92500. # low areas 
@@ -44,7 +48,7 @@ def shear_magnitude(fname_p, fname_s, plot=False):
     #vertical wind shear
     du = u_up - u_down
     dv = v_up - v_down
-    S = np.sqrt(du**2 + dv**2)
+    S = np.array(np.sqrt(du**2 + dv**2))
     
     if plot:
         dtstr = fname_p[-18:-4] #adjust depending on the filename format !
@@ -55,15 +59,32 @@ def shear_magnitude(fname_p, fname_s, plot=False):
         bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
         ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
         
-        plt.figure()
-        ax = plt.axes(projection=ccrs.PlateCarree())
-        plt.contourf(lons, lats, S, transform=ccrs.PlateCarree())
+        iuh = np.array(IUH(fname_p, fname_s))
+        iuh[abs(iuh)<5] = np.nan # mask regions of very small IUH to smoothen the background
+        iuh_max = 170 # set here the maximum (or minimum in absolute value) IUH that you want to display
+        norm = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
+        
+        
+        Smax = 50 # set here the maximum shear magnitude you want to display
+        Snorm = TwoSlopeNorm(vmin=0, vcenter=20, vmax=Smax)
+        
+        fig = plt.figure(figsize=(6,12))
+        
+        ax = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
+        cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=22, transform=ccrs.PlateCarree())
+        ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+        ax.add_feature(ocean, linewidth=0.2)
+        plt.colorbar(cont, orientation='horizontal', label="IUH (m^2/s^2)")
+        plt.title(dtdisp)
+        
+        ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
+        plt.contourf(lons, lats, S, cmap="RdBu_r", transform=ccrs.PlateCarree(), levels=22, norm=Snorm)
         ax.add_feature(ocean, linewidth=0.2)
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         plt.colorbar(orientation='horizontal', label="0-6 km vertical wind shear magnitude (m/s)")
-        plt.title(dtdisp)
-    
-    return S
+        
+    if ret:
+        return du, dv
 
 
 # function computing the Bunkers deviant motion a given supercell at a single time shot
@@ -81,7 +102,32 @@ def bunkers_motion(fname_p, fname_s, SC_grid_coord):
 # MAIN
 #================================================================================================================================
 
-fname_p = "/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20201231230000p.nc"
-fname_s = "/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20201231230000.nc"
-shear_magnitude(fname_p, fname_s, True)
+## Plot wind shear magnitude together with IUH 2D fields
 
+#import case studies files
+day = date(2019, 6, 13) # date to be filled
+hours = np.array(range(17,20)) # to be filled according to the considered period of the day
+mins = 0 # to be filled according to the output names
+secs = 0 # to be filled according to the output names
+cut = "largecut" # to be filled according to the cut type
+
+repo_path = "/scratch/snx3000/mblanc/UHfiles/"
+filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
+filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
+filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
+filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
+
+alltimes = [] # all times within the considered period
+for h in hours:
+    t = time(h, mins, secs)
+    alltimes.append(t.strftime("%H%M%S"))
+        
+allfiles_p = [] # all files to be plotted in the directory
+allfiles_s = []
+for t in alltimes:
+    allfiles_p.append(repo_path + filename_p + t + "p.nc")
+    allfiles_s.append(repo_path + filename_s + t + ".nc")
+
+# plot the chosen time shots
+for i in range(np.size(allfiles_p)):
+    vertical_wind_shear(allfiles_p[i], allfiles_s[i])
