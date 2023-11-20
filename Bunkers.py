@@ -34,8 +34,8 @@ def vertical_wind_shear(fname_p, fname_s, plot=True, ret=False):
         lons = dataset.variables['lon']
     
     #upper bound, common to every grid point: average between 400 hPa (~7 km) and 500 hPa (~5.4 km) winds
-    u_up = (u[2] + u[3])/2
-    v_up = (v[2] + v[3])/2
+    #u_up = (u[2] + u[3])/2
+    #v_up = (v[2] + v[3])/2
     
     #lower bound: differs depending on topography
     surf_bin = ps > 92500. # low areas 
@@ -44,6 +44,13 @@ def vertical_wind_shear(fname_p, fname_s, plot=True, ret=False):
     u_down = u[7]*surf_bin + u[6]*mid_bin + u[5]*up_bin 
     v_down = v[7]*surf_bin + v[6]*mid_bin + v[5]*up_bin
     #take resectively lower bound at 925 (~753m), 850 (~1430m), and 700 (~3000m) hPa, without averaging
+    
+    #upper bound: also depends on topography -> keep a consistent height range
+    u_up = 0.5*(u[2]+u[3])*surf_bin + u[2]*mid_bin + u[1]*up_bin
+    v_up = 0.5*(v[2]+v[3])*surf_bin + v[2]*mid_bin + v[1]*up_bin
+    #take resectively upper bound at 400-500 hPa (~7-5.4 km) average -> height range ~5.45 km
+    #                                400 hPa (~7 km) -> height range ~5.57 km
+    #                                300 hPa (~8.9 km) -> height range ~5.96 km
     
     #vertical wind shear
     du = u_up - u_down
@@ -88,7 +95,7 @@ def vertical_wind_shear(fname_p, fname_s, plot=True, ret=False):
 
 
 # function computing the Bunkers deviant motion a given supercell at a single time shot
-def bunkers_motion(fname_p, fname_s, SC_grid_coord):
+def bunkers_motion(fname_p, fname_s, SC_grid_coord, radius):
     #input: fname_p (str): complete file path containing the wind fields (3D)
     #       fname_s (str): complete file path containing the surface pressure (2D)
     #       SC_grid_coord (str): 
