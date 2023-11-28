@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from datetime import date, time, datetime
+from datetime import datetime, date, time
 import xarray as xr
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
@@ -71,27 +71,33 @@ def S_large_domain(fname_p, fname_s, plot=True, ret=False):
         iuh_max = 170 # set here the maximum (or minimum in absolute value) IUH that you want to display
         norm = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
         
-        
         Smax = 50 # set here the maximum shear magnitude you want to display
         Snorm = TwoSlopeNorm(vmin=0, vcenter=20, vmax=Smax)
+        skip = 10 #display arrow every skip grid point, for clarity
         
         fig = plt.figure(figsize=(6,12))
         
-        ax = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
+        ax = fig.add_subplot(3, 1, 1, projection=ccrs.PlateCarree())
         cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=22, transform=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
-        plt.colorbar(cont, orientation='horizontal', label="IUH (m^2/s^2)")
+        plt.colorbar(cont, orientation='horizontal', label=r"IUH ($m^2/s^2$)")
         plt.title(dtdisp)
         
-        ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
+        ax = fig.add_subplot(3, 1, 2, projection=ccrs.PlateCarree())
         plt.contourf(lons, lats, S, cmap="RdBu_r", transform=ccrs.PlateCarree(), levels=22, norm=Snorm)
         ax.add_feature(ocean, linewidth=0.2)
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         plt.colorbar(orientation='horizontal', label="0-6 km vertical wind shear magnitude (m/s)")
         
+        ax = fig.add_subplot(3, 1, 3, projection=ccrs.PlateCarree())
+        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], du[::skip,::skip], dv[::skip,::skip], transform=ccrs.PlateCarree())
+        ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+        ax.add_feature(ocean, linewidth=0.2)
+        
+
     if ret:
-        return du, dv
+        return [du, dv]
 
 
 
@@ -192,7 +198,7 @@ def bunkers_motion(fname_p, fname_s, center, rad):
     S = S_local(fname_p, fname_s, center, rad) # 2D vector
     V_mean = mean_wind(fname_p, fname_s, center, rad) # 2D vector
     D = 7.5 # magnitude of deviation from the 0–6-km mean wind (m/s)
-    Sk = np.array([S[1], -S[0]]) # cross product between S and k=(0,0,1)
+    Sk = np.array([S[1], -S[0]]) # cross product between S and k=(0,0,1), on the horizontal 2D plane
     
     V_RM = V_mean + D*Sk/np.linalg.norm(S)
     V_LM = V_mean - D*Sk/np.linalg.norm(S)
@@ -205,32 +211,30 @@ def bunkers_motion(fname_p, fname_s, center, rad):
 # MAIN
 #================================================================================================================================
 
-## Plot wind shear magnitude together with IUH 2D fields
+# Plot wind shear magnitude together with IUH 2D fields
 
 #import case studies files
-# day = date(2019, 6, 13) # date to be filled
-# hours = np.array(range(17,20)) # to be filled according to the considered period of the day
-# mins = 0 # to be filled according to the output names
-# secs = 0 # to be filled according to the output names
-# cut = "largecut" # to be filled according to the cut type
+day = date(2019, 6, 13) # date to be filled
+hours = np.array(range(17,20)) # to be filled according to the considered period of the day
+mins = 0 # to be filled according to the output names
+secs = 0 # to be filled according to the output names
+cut = "largecut" # to be filled according to the cut type
 
-# repo_path = "/scratch/snx3000/mblanc/UHfiles/"
-# filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
-# filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
-# filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
-# filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
+repo_path = "/scratch/snx3000/mblanc/UHfiles/"
+filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
+filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
 
-# alltimes = [] # all times within the considered period
-# for h in hours:
-#     t = time(h, mins, secs)
-#     alltimes.append(t.strftime("%H%M%S"))
+alltimes = [] # all times within the considered period
+for h in hours:
+    t = time(h, mins, secs)
+    alltimes.append(t.strftime("%H%M%S"))
         
-# allfiles_p = [] # all files to be plotted in the directory
-# allfiles_s = []
-# for t in alltimes:
-#     allfiles_p.append(repo_path + filename_p + t + "p.nc")
-#     allfiles_s.append(repo_path + filename_s + t + ".nc")
+allfiles_p = [] # all files to be plotted in the directory
+allfiles_s = []
+for t in alltimes:
+    allfiles_p.append(repo_path + filename_p + t + "p.nc")
+    allfiles_s.append(repo_path + filename_s + t + ".nc")
 
-# # plot the chosen time shots
-# for i in range(np.size(allfiles_p)):
-#     S_large_domain(allfiles_p[i], allfiles_s[i])
+# plot the chosen time shots
+for i in range(np.size(allfiles_p)):
+    S_large_domain(allfiles_p[i], allfiles_s[i])
