@@ -10,21 +10,21 @@ from matplotlib.animation import FuncAnimation
 
  
 # hail cell masks
-dset = xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/cell_masks_20190707.nc")
+dset = xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_masks_20130727.nc")
 print(dset)
 dset.variables.keys()
-dset['cell_mask'][100].plot(cmap='jet')
+dset['cell_mask'][53].plot(cmap='jet')
 
 
 # gap filled swath
 dset = xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/gap_filled_20190707.nc")
 print(dset)
 dset.variables.keys()
-dset['DHAIL_MX'].plot(cmap='jet')
+dset['cell_mask'][10].plot(cmap='jet')
 
 
 # hail cell tracks
-with open("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/cell_tracks_20190707.json", "r") as read_file:
+with open("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_tracks_20210713.json", "r") as read_file:
     dset = json.load(read_file)
     
 print(dset)
@@ -32,7 +32,7 @@ print(dset)
 #==========================================================================================================================
 
 #1h_2D outputs -> same type as 5min_2D outputs
-dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20160309170000.nc")
+dset = xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/infiles/swisscut_PREClffd20210713.nc")
 print(dset)
 dset.variables.keys()
 dset['cell_mask'][100].plot(cmap='jet')
@@ -141,17 +141,17 @@ rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerline
 
 # first image on screen
 dset0 = xr.open_dataset(allfiles[0])
-PREC0 = np.array(dset0[varin][0])
-PREC0[PREC0<0.2] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
+PREC0 = np.array(dset0[varin][0])*12
+PREC0[PREC0<0.1] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
 lats = dset0.variables['lat']
 lons = dset0.variables['lon']
 dt0str = day.strftime("%Y%m%d") + alltimes[0]
 dt0obj = datetime.strptime(dt0str, "%Y%m%d%H%M%S")
 
 if varout=="PREC":
-   levels = np.linspace(0, 12, 22) # adjust the number of levels at your convenience
+   levels = np.linspace(0, 80, 22) # adjust the number of levels at your convenience
 elif varout=="HAIL" or varout =="DHAIL":
-   levels = np.linspace(0, 40, 22) # adjust the number of levels at your convenience
+   levels = np.linspace(0, 30, 22) # adjust the number of levels at your convenience
 
 fig = plt.figure()
 ax = plt.axes(projection=ccrs.PlateCarree())
@@ -161,7 +161,7 @@ ax.add_feature(lakes)
 ax.add_feature(rivers, linewidth=0.2)
 ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
 if varout=="PREC":
-    plt.colorbar(orientation='horizontal', label="Total precipitation amount (kg/m^2)")
+    plt.colorbar(orientation='horizontal', label="Rain rate (mm/h)")
 elif varout=="HAIL" or varout =="DHAIL":
     plt.colorbar(orientation='horizontal', label="Maximum hail diameter (mm)")
 plt.title(dt0obj.strftime("%d/%m/%Y %H:%M:%S"))
@@ -172,8 +172,8 @@ def animate(i):
     dtstr = day.strftime("%Y%m%d") + alltimes[i]
     dtobj = datetime.strptime(dtstr, "%Y%m%d%H%M%S")
     dset = xr.open_dataset(allfiles[i])
-    PREC = np.array(dset[varin][0])
-    PREC[PREC<0.2] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
+    PREC = np.array(dset[varin][0])*12
+    PREC[PREC<0.1] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
     for c in cont.collections:
         c.remove()  # removes only the contours, leaves the rest intact
     cont = plt.contourf(lons, lats, PREC, levels=levels, cmap="plasma", transform=ccrs.PlateCarree())
@@ -236,3 +236,16 @@ for i, p in enumerate(pres):
 for i in range(7):
     print("dplev=", round(pres[i]/100), "-", round(pres[i+1]/100), "hPa: min(dZ)=", np.min(Z[i]-Z[i+1]), ", mean(dZ)=", np.mean(Z[i]-Z[i+1]), ", max(dZ)=", np.max(Z[i]-Z[i+1]))
 
+
+#========================================================================================================================================
+## dBZ <-> mm/h ##
+
+# MeteoSwiss parameters
+a = 316
+b = 1.5
+# R: rain rate in mm/h ; Lz: reflectivity in dBZ
+def R(L):
+    return (10**(L/10)/a)**(1/b)
+
+def Lz(R):
+    return 10*np.log10(a*R**b)
