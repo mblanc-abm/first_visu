@@ -7,6 +7,7 @@ import cartopy
 import json
 from datetime import date, time, datetime
 from matplotlib.animation import FuncAnimation
+from matplotlib.colors import TwoSlopeNorm
 
  
 # hail cell masks
@@ -32,7 +33,7 @@ print(dset)
 #==========================================================================================================================
 
 #1h_2D outputs -> same type as 5min_2D outputs
-dset = xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/infiles/swisscut_PREClffd20210713.nc")
+dset = xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/infiles/largecut_PREClffd20130729.nc")
 print(dset)
 dset.variables.keys()
 dset['cell_mask'][100].plot(cmap='jet')
@@ -107,9 +108,9 @@ plt.show()
 ## TIME-LAPS ANIMATION ##
 
 ## filenames preparation
-day = date(2014, 6, 25) # to be filled
-varout = "HAIL" # to be filled, variable name in the file names
-varin = "DHAIL_MX" # to be filled, variable name within the netcdf files
+day = date(2017, 8, 2) # to be filled
+varout = "PREC" # to be filled, variable name in the file names
+varin = "TOT_PREC" # to be filled, variable name within the netcdf files
 
 hours = np.array(range(0,24)) # to be filled according to the output names
 mins = np.array(range(0,60,5)) # to be filled according to the output names
@@ -149,19 +150,22 @@ dt0str = day.strftime("%Y%m%d") + alltimes[0]
 dt0obj = datetime.strptime(dt0str, "%Y%m%d%H%M%S")
 
 if varout=="PREC":
-   levels = np.linspace(0, 80, 22) # adjust the number of levels at your convenience
+   prec_max = 60 # set here the maximum rain rate you want to display, threshold + prominencev
+   norm = TwoSlopeNorm(vmin=0, vcenter=0.5*prec_max, vmax=prec_max)
+   levels_prec = np.linspace(0, prec_max, 23)
+   ticks_prec = np.arange(0, prec_max+1, 5)
 elif varout=="HAIL" or varout =="DHAIL":
    levels = np.linspace(0, 30, 22) # adjust the number of levels at your convenience
 
 fig = plt.figure()
 ax = plt.axes(projection=ccrs.PlateCarree())
-cont = plt.contourf(lons, lats, PREC0, levels=levels, cmap="plasma", transform=ccrs.PlateCarree())
+cont = plt.contourf(lons, lats, PREC0, cmap="plasma", norm=norm, levels=levels_prec, extend="max", transform=ccrs.PlateCarree())
 ax.add_feature(ocean, linewidth=0.2)
 ax.add_feature(lakes)
 ax.add_feature(rivers, linewidth=0.2)
 ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
 if varout=="PREC":
-    plt.colorbar(orientation='horizontal', label="Rain rate (mm/h)")
+    plt.colorbar(cont, ticks=ticks_prec, orientation='horizontal', label="Rain rate (mm/h)")
 elif varout=="HAIL" or varout =="DHAIL":
     plt.colorbar(orientation='horizontal', label="Maximum hail diameter (mm)")
 plt.title(dt0obj.strftime("%d/%m/%Y %H:%M:%S"))
@@ -176,7 +180,7 @@ def animate(i):
     PREC[PREC<0.1] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
     for c in cont.collections:
         c.remove()  # removes only the contours, leaves the rest intact
-    cont = plt.contourf(lons, lats, PREC, levels=levels, cmap="plasma", transform=ccrs.PlateCarree())
+    cont = plt.contourf(lons, lats, PREC, levels=levels_prec, cmap="plasma", norm=norm, transform=ccrs.PlateCarree())
     plt.title(dtobj.strftime("%d/%m/%Y %H:%M:%S"))
     return cont
 
