@@ -206,10 +206,12 @@ def bunkers_motion(fname_p, fname_s, r_conv=2, plot=True, ret=False):
     #       fname_s (str): complete file path containing the surface pressure (2D)
     #output: 2D Bunkers velocity vectors for the right and left movers (RM and LM)
     
-    V_RM, V_LM = bunkers_motion_raw(fname_p, fname_s, plot=True, ret=True)
+    V_RM, V_LM = bunkers_motion_raw(fname_p, fname_s, plot=False, ret=True)
+    footprint = disk(r_conv)
+    #the bunkers motion at every grid point is taken to be the average of the circular neighbouring raw bunkers motion
     for i in range(2):
-        V_RM[i] = convolve2d(V_RM[i], disk(r_conv), mode='same')
-        V_LM[i] = convolve2d(V_LM[i], disk(r_conv), mode='same')
+        V_RM[i] = convolve2d(V_RM[i], footprint, mode='same')/np.sum(footprint)
+        V_LM[i] = convolve2d(V_LM[i], footprint, mode='same')/np.sum(footprint)
     
     if plot:
         dset = xr.open_dataset(fname_s)
@@ -239,7 +241,7 @@ def bunkers_motion(fname_p, fname_s, r_conv=2, plot=True, ret=False):
         plt.quiver(lons[::skip,::skip], lats[::skip,::skip], V_RM[0][::skip,::skip], V_RM[1][::skip,::skip], transform=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
-        plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and right mover motion with r_conv="+str(2.2*r_conv)+"km")
+        plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and RM motion conv. averaged with r="+str(round(2.2*r_conv,1))+"km")
         plt.title(dtdisp)
         
         ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
@@ -247,13 +249,12 @@ def bunkers_motion(fname_p, fname_s, r_conv=2, plot=True, ret=False):
         plt.quiver(lons[::skip,::skip], lats[::skip,::skip], V_LM[0][::skip,::skip], V_LM[1][::skip,::skip], transform=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
-        plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and left mover motion with r_conv="+str(2.2*r_conv)+"km")
+        plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and LM motion conv. averaged with r="+str(round(2.2*r_conv,1))+"km")
         
     if ret:
         return (V_RM, V_LM)
 
 #================================================================================================================================
-
 # MAIN
 #================================================================================================================================
 
