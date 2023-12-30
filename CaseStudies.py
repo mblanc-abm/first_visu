@@ -138,14 +138,14 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     fig = plt.figure(figsize=(6,12))
     
     ax = fig.add_subplot(3, 1, 1, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, transform=ccrs.PlateCarree())
+    cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, extend="both", transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
     plt.colorbar(cont, ticks=ticks_iuh, orientation='horizontal', label=r"IUH ($m^2/s^2$)")
     plt.title(dtdisp)
     
     ax = fig.add_subplot(3, 1, 2, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, prec, cmap="plasma", norm=norm_prec, levels=levels_prec, transform=ccrs.PlateCarree())
+    cont = ax.contourf(lons, lats, prec, cmap="plasma", norm=norm_prec, levels=levels_prec, extend="max", transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
     plt.colorbar(cont, ticks=ticks_prec, orientation='horizontal', label="Rain rate (mm/h)")
@@ -185,7 +185,7 @@ def plot_IUH(fname_p, fname_s):
     # plot
     plt.figure()
     ax = plt.axes(projection=ccrs.PlateCarree())
-    cont = plt.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=levels_iuh, transform=ccrs.PlateCarree())
+    cont = plt.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=levels_iuh, extend="both", transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
     plt.colorbar(cont, ticks=ticks_iuh, orientation='horizontal', label="IUH (m^2/s^2)")
