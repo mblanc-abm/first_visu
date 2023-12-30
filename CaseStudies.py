@@ -26,12 +26,12 @@ def UH_plev(fname_p, plev):
     #output: UH (2D array)
     
     # definition of the required variables
-    dataset = xr.open_dataset(fname_p)
-    lats = dataset.variables['lat']
-    lons = dataset.variables['lon']
-    u = dataset['U'][0][plev] # 2D: lat, lon
-    v = dataset['V'][0][plev] # same. U, V and W are unstaggered
-    w = dataset['W'][0][plev]
+    with xr.open_dataset(fname_p) as dataset:
+        lats = dataset.variables['lat']
+        lons = dataset.variables['lon']
+        u = dataset['U'][0][plev] # 2D: lat, lon
+        v = dataset['V'][0][plev] # same. U, V and W are unstaggered
+        w = dataset['W'][0][plev]
     
     # select updrafts only, the rest goes to 0
     wbin = w > 0
@@ -61,12 +61,13 @@ def IUH(fname_p, fname_s):
     #output: IUH (2D array)
     
     # definition of the required variables
-    dset = xr.open_dataset(fname_p)
-    pres = np.array(dset.variables['pressure'])
-    iuh = np.zeros(np.shape(dset.variables['lon']))
-    temp = np.array(dset['T'][0]) # 3D : (pres, lat, lon)
-    dset = xr.open_dataset(fname_s)
-    ps = dset['PS'][0] # 2D: lat, lon
+    with xr.open_dataset(fname_p) as dset:
+        pres = np.array(dset.variables['pressure'])
+        iuh = np.zeros(np.shape(dset.variables['lon']))
+        temp = np.array(dset['T'][0]) # 3D : (pres, lat, lon)
+    
+    with xr.open_dataset(fname_s) as dset:
+        ps = dset['PS'][0] # 2D: lat, lon
     
     # select grid points on the 700 hPa isobar lying above surface
     above_surface_bin = ps > 70000.
@@ -107,20 +108,22 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
     ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
     
+    # static fields
+    with xr.open_dataset(fname_s) as dset:
+        lats = dset.variables['lat']
+        lons = dset.variables['lon']
+    
     # IUH data
-    dset = xr.open_dataset(fname_s)
     iuh = np.array(IUH(fname_p, fname_s))
     iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
     iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
-    lats = dset.variables['lat']
-    lons = dset.variables['lon']
     norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
     levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
     ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
     
     # Precipitation data
-    dset = xr.open_dataset(prec_fname)
-    prec = np.array(dset['TOT_PREC'][0])*12
+    with xr.open_dataset(prec_fname) as dset:
+        prec = np.array(dset['TOT_PREC'][0])*12
     prec[prec<0.1] = np.nan # mask regions of very small precipitation to smoothen the backgroud
     prec_max = 60 # set here the maximum rain rate you want to display, threshold + prominence
     norm_prec = TwoSlopeNorm(vmin=0, vcenter=0.5*prec_max, vmax=prec_max)
@@ -128,8 +131,8 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     ticks_prec = np.arange(0, prec_max+1, 5)
     
     # Hail data
-    dset = xr.open_dataset(hail_fname)
-    hail = np.array(dset['DHAIL_MX'][0])
+    with xr.open_dataset(hail_fname) as dset:
+        hail = np.array(dset['DHAIL_MX'][0])
     hail[hail<0.2] = np.nan # mask regions of very small hail to smoothen the backgroud
     hail_max = 40 # set here the maximum hail diameter you want to display
     levels_hail = np.linspace(0, hail_max, 22) # adjust the number of levels at your convenience
@@ -171,13 +174,15 @@ def plot_IUH(fname_p, fname_s):
     bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
     ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
     
-    #data
-    dset = xr.open_dataset(fname_s)
+    # static fields
+    with xr.open_dataset(fname_s) as dset:
+        lats = dset.variables['lat']
+        lons = dset.variables['lon']
+    
+    # IUH data
     iuh = np.array(IUH(fname_p, fname_s))
     iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
     iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
-    lats = dset.variables['lat']
-    lons = dset.variables['lon']
     norm = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
     levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
     ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)

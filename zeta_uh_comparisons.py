@@ -5,9 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import xarray as xr
-import cartopy.feature as cfeature
-import cartopy.crs as ccrs
-from matplotlib.colors import TwoSlopeNorm
+#import cartopy.feature as cfeature
+#import cartopy.crs as ccrs
+#from matplotlib.colors import TwoSlopeNorm
 
 # GLOBAL VARIABLES AND FUNCTIONS
 #========================================================================================================================================
@@ -34,15 +34,16 @@ def zeta_plev(fname, plev, R_const=True, alt0=False, np_grad=False):
     #input: fname (str): complete file path
     #       plev (int): pressure level considered, index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
     #output: zeta (2D array), UH (2D array)
-    dataset = xr.open_dataset(fname)
-    lats = dataset.variables['lat']
-    lons = dataset.variables['lon']
-    #pres = dataset.variables['pressure']
-    Z = dataset.variables['FI'][0][plev]/g # geopotental height, 2D: (lat,lon). We assume here that geop height approximates well altitude
-    nlat, nlon = np.shape(lats)
-    u = dataset['U'][0][plev] # 2D: lat, lon
-    v = dataset['V'][0][plev] # same. ARE U, V and W staggered ?? here I assume them unstaggered
-    #w = dataset['W'][0][plev]
+    
+    with xr.open_dataset(fname) as dataset:
+        lats = dataset.variables['lat']
+        lons = dataset.variables['lon']
+        #pres = dataset.variables['pressure']
+        Z = dataset.variables['FI'][0][plev]/g # geopotental height, 2D: (lat,lon). We assume here that geop height approximates well altitude
+        nlat, nlon = np.shape(lats)
+        u = dataset['U'][0][plev] # 2D: lat, lon
+        v = dataset['V'][0][plev] # same. ARE U, V and W staggered ?? here I assume them unstaggered
+        #w = dataset['W'][0][plev]
     
     # Computation of the vertical vorticity and instataneous updraft (w>0) helicity.
     # For simplification, we omit the values at the boundaries, leaving them to 0.
@@ -78,19 +79,20 @@ def RMSE(M, Mref):
 
 
 
-# function computing updraft helicity field on a certain pressure level given the wind field contained in a single time shot file
+# function computing vertical vorticity field on a certain pressure level given the wind field contained in a single time shot file
 def zeta_grad_plev(fname, plev, npgrad=True, matr=False):
     #input: fname (str): complete file path
     #       plev (int): pressure level considered, index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
     #output: UH (2D array)
-    dataset = xr.open_dataset(fname)
-    lats = dataset.variables['lat']
-    lons = dataset.variables['lon']
-    #pres = dataset.variables['pressure']
-    #Z = dataset.variables['FI'][0][plev]/g # geopotental height, 2D: (lat,lon). We assume here that geop height approximates well altitude
-    u = dataset['U'][0][plev] # 2D: lat, lon
-    v = dataset['V'][0][plev] # same. ARE U, V and W staggered ?? here I assume them unstaggered
-    #w = dataset['W'][0][plev]
+    
+    with xr.open_dataset(fname) as dataset:
+        lats = dataset.variables['lat']
+        lons = dataset.variables['lon']
+        #pres = dataset.variables['pressure']
+        #Z = dataset.variables['FI'][0][plev]/g # geopotental height, 2D: (lat,lon). We assume here that geop height approximates well altitude
+        u = dataset['U'][0][plev] # 2D: lat, lon
+        v = dataset['V'][0][plev] # same. ARE U, V and W staggered ?? here I assume them unstaggered
+        #w = dataset['W'][0][plev]
     
     if npgrad or matr:
         dlon = np.deg2rad(np.lib.pad(lons, ((0,0),(0,1)), mode='constant', constant_values=np.nan)[:,1:] - np.lib.pad(lons, ((0,0),(1,0)), mode='constant', constant_values=np.nan)[:,:-1])

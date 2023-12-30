@@ -28,15 +28,15 @@ def wind_shear(fname_p, fname_s, plot=True, ret=False):
     #        if requested, plots the wind shear magnitude together with the IUH
     #        if requested, returns the wind shear vector
     
-    dset = xr.open_dataset(fname_s)
-    ps = dset['PS'][0] # 2D: lat, lon
+    with xr.open_dataset(fname_s) as dset:
+        ps = dset['PS'][0] # 2D: lat, lon
     
-    dataset = xr.open_dataset(fname_p)
-    u = dataset['U'][0] # 3D: p, lat, lon
-    v = dataset['V'][0] # same. U and V are unstaggered
-    if plot:
-        lats = dataset.variables['lat']
-        lons = dataset.variables['lon']
+    with xr.open_dataset(fname_p) as dataset:
+        u = dataset['U'][0] # 3D: p, lat, lon
+        v = dataset['V'][0] # same. U and V are unstaggered
+        if plot:
+            lats = dataset.variables['lat']
+            lons = dataset.variables['lon']
     
     #upper bound, common to every grid point: average between 400 hPa (~7 km) and 500 hPa (~5.4 km) winds
     #u_up = (u[2] + u[3])/2
@@ -115,13 +115,13 @@ def mean_wind(fname_p, fname_s):
     #output: 2D 0-6 km mean wind vector
     
     # surface pressure data
-    dset = xr.open_dataset(fname_s)
-    ps = np.array(dset['PS'][0]) # 2D: lat, lon
+    with xr.open_dataset(fname_s) as dset:
+        ps = np.array(dset['PS'][0]) # 2D: lat, lon
     
     # wind field data
-    dataset = xr.open_dataset(fname_p)
-    u = np.array(dataset['U'][0]) # 3D: p, lat, lon
-    v = np.array(dataset['V'][0]) # same. U and V are unstaggered
+    with xr.open_dataset(fname_p) as dataset:
+        u = np.array(dataset['U'][0]) # 3D: p, lat, lon
+        v = np.array(dataset['V'][0]) # same. U and V are unstaggered
     
     # both bounds differ depending on topography
     surf_bin = ps > 92500. # low areas
@@ -159,9 +159,9 @@ def bunkers_motion_raw(fname_p, fname_s, plot=True, ret=False):
     V_LM = V_mean - D*Sk/np.linalg.norm(S, axis=0)
     
     if plot:
-        dset = xr.open_dataset(fname_s)
-        lats = dset.variables['lat']
-        lons = dset.variables['lon']
+        with xr.open_dataset(fname_s) as dset:
+            lats = dset.variables['lat']
+            lons = dset.variables['lon']
         
         dtstr = fname_p[-18:-4] #adjust depending on the filename format !
         dtobj = pd.to_datetime(dtstr, format="%Y%m%d%H%M%S")
@@ -214,9 +214,9 @@ def bunkers_motion(fname_p, fname_s, r_conv=2, plot=True, ret=False):
         V_LM[i] = convolve2d(V_LM[i], footprint, mode='same')/np.sum(footprint)
     
     if plot:
-        dset = xr.open_dataset(fname_s)
-        lats = dset.variables['lat']
-        lons = dset.variables['lon']
+        with xr.open_dataset(fname_s) as dset:
+            lats = dset.variables['lat']
+            lons = dset.variables['lon']
         
         dtstr = fname_p[-18:-4] #adjust depending on the filename format !
         dtobj = pd.to_datetime(dtstr, format="%Y%m%d%H%M%S")

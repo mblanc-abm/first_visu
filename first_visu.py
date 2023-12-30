@@ -11,17 +11,17 @@ from matplotlib.colors import TwoSlopeNorm
 
  
 # hail cell masks
-dset = xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_masks_20130727.nc")
-print(dset)
-dset.variables.keys()
-dset['cell_mask'][53].plot(cmap='jet')
+with xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_masks_20130727.nc") as dset:
+    print(dset)
+    dset.variables.keys()
+    dset['cell_mask'][53].plot(cmap='jet')
 
 
 # gap filled swath
-dset = xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/gap_filled_20190707.nc")
-print(dset)
-dset.variables.keys()
-dset['cell_mask'][10].plot(cmap='jet')
+with xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/gap_filled_20190707.nc") as dset:
+    print(dset)
+    dset.variables.keys()
+    dset['cell_mask'][10].plot(cmap='jet')
 
 
 # hail cell tracks
@@ -33,28 +33,25 @@ print(dset)
 #==========================================================================================================================
 
 #1h_2D outputs -> same type as 5min_2D outputs
-dset = xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/infiles/largecut_PREClffd20130729.nc")
-print(dset)
-dset.variables.keys()
-dset['cell_mask'][100].plot(cmap='jet')
+with xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/infiles/largecut_PREClffd20130729.nc") as dset:
+    print(dset)
+    dset.variables.keys()
+    dset['cell_mask'][100].plot(cmap='jet')
 
 
 #1h_3D outputs
-dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20201231230000p.nc")
-print(dset)
-dset.variables.keys()
-dset['cell_mask'][100].plot(cmap='jet')
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20201231230000p.nc") as dset:
+    print(dset)
+    dset.variables.keys()
+    dset['cell_mask'][100].plot(cmap='jet')
 
 #==========================================================================================================================
 
 #swiss_cut hail visualisation
-dset = xr.open_dataset("/scratch/snx3000/mblanc/20210713/swisscut_DHAILlffd20210713124000.nc")
-#print(dset)
-#dset.variables.keys()
-
-DHAIL = dset.variables['DHAIL_MX'][0, :, :]
-lats = dset.variables['lat']
-lons = dset.variables['lon']
+with xr.open_dataset("/scratch/snx3000/mblanc/20210713/swisscut_DHAILlffd20210713124000.nc") as dset:
+    DHAIL = dset.variables['DHAIL_MX'][0, :, :]
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
 
 resol = '10m'  # use data at this scale
 bodr = cartopy.feature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.7)
@@ -77,13 +74,13 @@ plt.show()
 #==========================================================================================================================
 
 #swiss_cut precipitation visualisation
-dset = xr.open_dataset("/scratch/snx3000/mblanc/20210713/swisscut_PREClffd20210713124000.nc")
 dtstr = "20210713124000"
 dtobj = datetime.strptime(dtstr, "%Y%m%d%H%M%S")
 
-PREC = dset.variables['TOT_PREC'][0, :, :]
-lats = dset.variables['lat']
-lons = dset.variables['lon']
+with xr.open_dataset("/scratch/snx3000/mblanc/20210713/swisscut_PREClffd20210713124000.nc") as dset:
+    PREC = dset.variables['TOT_PREC'][0, :, :]
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
 
 resol = '10m'  # use data at this scale
 bodr = cartopy.feature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.7)
@@ -141,11 +138,11 @@ lakes = cartopy.feature.NaturalEarthFeature('physical', 'lakes', scale=resol, ed
 rivers = cartopy.feature.NaturalEarthFeature('physical', 'rivers_lake_centerlines', scale=resol, edgecolor='b', facecolor='none')
 
 # first image on screen
-dset0 = xr.open_dataset(allfiles[0])
-PREC0 = np.array(dset0[varin][0])*12
+with xr.open_dataset(allfiles[0]) as dset0:
+        PREC0 = np.array(dset0[varin][0])*12
+        lats = dset0.variables['lat']
+        lons = dset0.variables['lon']
 PREC0[PREC0<0.1] = np.nan # mask regions of very small precip / hail to smoothen the backgroud
-lats = dset0.variables['lat']
-lons = dset0.variables['lon']
 dt0str = day.strftime("%Y%m%d") + alltimes[0]
 dt0obj = datetime.strptime(dt0str, "%Y%m%d%H%M%S")
 
@@ -192,9 +189,9 @@ anim.save(anim_name)
 ## checking dx and dy variation ##
 
 Rm = 6370000
-dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20160309170000.nc")
-lats = dset.variables['lat']
-lons = dset.variables['lon']
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20160309170000.nc") as dset:
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
 
 dlon = np.deg2rad(np.lib.pad(lons, ((0,0),(0,1)), mode='constant', constant_values=np.nan)[:,1:] - np.lib.pad(lons, ((0,0),(1,0)), mode='constant', constant_values=np.nan)[:,:-1])
 dlat =  np.deg2rad(np.lib.pad(lats, ((0,1),(0,0)), mode='constant', constant_values=np.nan)[1:,:] - np.lib.pad(lats, ((1,0),(0,0)), mode='constant', constant_values=np.nan)[:-1,:])
@@ -212,10 +209,11 @@ print("max(dy)=", np.nanmax(dy))
 #========================================================================================================================================
 ## checking beneath surface pressure levels ##
 
-dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20210712190000p.nc")
-pres = np.array(dset.variables['pressure'])
-dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20130712190000.nc")
-ps = np.array(dset['PS'][0])
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20210712190000p.nc") as dset:
+    pres = np.array(dset.variables['pressure'])
+
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20130712190000.nc") as dset:
+    ps = np.array(dset['PS'][0])
 
 pbin = []
 for p in pres:
@@ -230,9 +228,9 @@ print("out of", np.size(pbin[0]))
 #========================================================================================================================================
 ## checking geopotential height differences betweeen pressure levels ##
 
-dset = xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20201231230000p.nc")
-Z = np.array(dset['FI'][0]/9.81)
-pres = np.array(dset.variables['pressure'])
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20201231230000p.nc") as dset:
+    Z = np.array(dset['FI'][0]/9.81)
+    pres = np.array(dset.variables['pressure'])
 
 for i, p in enumerate(pres):
     print("plev=", round(p/100), "hPa: min(Z)=", np.min(Z[i]), ", mean(Z)=", np.mean(Z[i]), ", max(Z)=", np.max(Z[i]))
