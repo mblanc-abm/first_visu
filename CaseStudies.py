@@ -184,16 +184,16 @@ def plot_IUH(fname_p, fname_s):
     iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
     iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
     norm = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-    levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
+    #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
     ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
 
     # plot
     plt.figure()
     ax = plt.axes(projection=ccrs.PlateCarree())
-    cont = plt.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm, levels=levels_iuh, extend="both", transform=ccrs.PlateCarree())
+    cont = plt.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
-    plt.colorbar(cont, ticks=ticks_iuh, orientation='horizontal', label="IUH (m^2/s^2)")
+    plt.colorbar(cont, ticks=ticks_iuh, orientation='horizontal', label=r"IUH ($m^2/s^2$)")
     plt.title(dtdisp)
    
 
@@ -202,14 +202,14 @@ def plot_IUH(fname_p, fname_s):
 # MAIN
 #================================================================================================================================
 
-# import files with wind variables U, V, W of a certain day, considering switzerland
-# day = date(2021, 6, 29) # date to be filled
-# hours = np.array(range(0,24)) # to be filled according to the considered period of the day
+#import files with wind variables U, V, W of a certain day, considering switzerland
+# day = date(2021, 6, 28) # date to be filled
+# hours = np.array(range(13,14)) # to be filled according to the considered period of the day
 # mins = 0 # to be filled according to the output names
 # secs = 0 # to be filled according to the output names
 # cut = "largecut" # to be filled according to the cut type
 
-# repo_path = "/scratch/snx3000/mblanc/" + day.strftime("%Y%m%d") + "/"
+# repo_path = "/scratch/snx3000/mblanc/UHfiles/" # + day.strftime("%Y%m%d") + "/"
 # filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
 # filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
 # #filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc

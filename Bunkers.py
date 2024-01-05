@@ -71,10 +71,10 @@ def wind_shear(fname_p, fname_s, plot=True, ret=False):
         ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
         
         iuh = np.array(IUH(fname_p, fname_s))
-        iuh[abs(iuh)<20] = np.nan # mask regions of very small IUH to smoothen the background
+        iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
         iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
         norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-        levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
+        #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
         ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
         
         S = np.array(np.sqrt(du**2 + dv**2)) #wind shear magnitude field
@@ -85,23 +85,23 @@ def wind_shear(fname_p, fname_s, plot=True, ret=False):
         fig = plt.figure(figsize=(6,12))
         
         ax = fig.add_subplot(3, 1, 1, projection=ccrs.PlateCarree())
-        cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, transform=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
+        cont = ax.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
         plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$)")
         plt.title(dtdisp)
         
         ax = fig.add_subplot(3, 1, 2, projection=ccrs.PlateCarree())
-        plt.contourf(lons, lats, S, cmap="RdBu_r", transform=ccrs.PlateCarree(), levels=22, norm=Snorm)
         ax.add_feature(ocean, linewidth=0.2)
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+        plt.pcolormesh(lons, lats, S, cmap="RdBu_r", transform=ccrs.PlateCarree(), norm=Snorm)
         plt.colorbar(orientation='horizontal', label="0-6 km vertical wind shear magnitude (m/s)")
         
         ax = fig.add_subplot(3, 1, 3, projection=ccrs.PlateCarree())
-        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], du[::skip,::skip], dv[::skip,::skip], transform=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
-        
+        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], du[::skip,::skip], dv[::skip,::skip], transform=ccrs.PlateCarree())
+                
 
     if ret:
         return np.array([du, dv])
@@ -176,24 +176,24 @@ def bunkers_motion_raw(fname_p, fname_s, plot=True, ret=False):
         iuh[abs(iuh)<20] = np.nan # mask regions of very small IUH to smoothen the background
         iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
         norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-        levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
+        #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
         ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
         
         fig = plt.figure(figsize=(6,12))
         
         ax = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
-        cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, transform=ccrs.PlateCarree())
-        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], V_RM[0][::skip,::skip], V_RM[1][::skip,::skip], transform=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
+        cont = ax.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
+        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], V_RM[0][::skip,::skip], V_RM[1][::skip,::skip], transform=ccrs.PlateCarree())
         plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and right mover raw motion")
         plt.title(dtdisp)
         
         ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
-        cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, transform=ccrs.PlateCarree())
-        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], V_LM[0][::skip,::skip], V_LM[1][::skip,::skip], transform=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
+        cont = ax.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
+        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], V_LM[0][::skip,::skip], V_LM[1][::skip,::skip], transform=ccrs.PlateCarree())
         plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and left mover raw motion")
         
     if ret:
@@ -223,16 +223,19 @@ def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=Fa
         dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
         if not z:
             z = r_conv # the "zoom": discards the edges in the plot to get rid of the edge effect
+            figname = dtstr
+        else:
+            figname = dtstr + "_zoom"
             
         resol = '10m'  # use data at this scale
         bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
         ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
         
         iuh = np.array(IUH(fname_p, fname_s))
-        iuh[abs(iuh)<20] = np.nan # mask regions of very small IUH to smoothen the background
+        iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
         iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
         norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-        levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
+        #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
         ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
         #bound_iuh = [-150,-125,-100,-75,-50,50,75,100,125,150]
         
@@ -241,7 +244,7 @@ def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=Fa
         ax = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
-        cont = ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, extend="both", transform=ccrs.PlateCarree())
+        cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
         plt.quiver(lons[z:-z,z:-z][::skip,::skip], lats[z:-z,z:-z][::skip,::skip], V_RM[0][z:-z,z:-z][::skip,::skip], V_RM[1][z:-z,z:-z][::skip,::skip], transform=ccrs.PlateCarree())
         plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and RM motion conv. averaged with r="+str(round(2.2*r_conv,1))+"km")
         plt.title(dtdisp)
@@ -249,12 +252,14 @@ def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=Fa
         ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
         ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
         ax.add_feature(ocean, linewidth=0.2)
-        cont = ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, extend="both", transform=ccrs.PlateCarree())
+        cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
         plt.quiver(lons[z:-z,z:-z][::skip,::skip], lats[z:-z,z:-z][::skip,::skip], V_LM[0][z:-z,z:-z][::skip,::skip], V_LM[1][z:-z,z:-z][::skip,::skip], transform=ccrs.PlateCarree())
         plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and LM motion conv. averaged with r="+str(round(2.2*r_conv,1))+"km")
         
+        plt.savefig(figname)
+        
     if ret:
-        return (V_RM, V_LM)
+        return V_RM, V_LM
 
 #================================================================================================================================
 # MAIN
@@ -263,8 +268,8 @@ def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=Fa
 # Plot wind shear magnitude together with IUH 2D fields
 
 #import case studies files
-day = date(2021, 6, 29) # date to be filled
-hours = np.array(range(13,20)) # to be filled according to the considered period of the day
+day = date(2021, 6, 28) # date to be filled
+hours = np.array(range(13,21)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 cut = "largecut" # to be filled according to the cut type
@@ -286,4 +291,4 @@ for t in alltimes:
 
 # plot the chosen time shots
 for i in range(np.size(allfiles_p)):
-    bunkers_motion(allfiles_p[i], allfiles_s[i], z=60, r_conv=15, skip=7)
+    bunkers_motion(allfiles_p[i], allfiles_s[i], z=80, r_conv=15, skip=7)
