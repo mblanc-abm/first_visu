@@ -10,6 +10,7 @@ import cartopy.crs as ccrs
 from matplotlib.colors import TwoSlopeNorm
 from scipy.signal import convolve2d
 from skimage.morphology import disk
+from skimage.segmentation import find_boundaries
 from CaseStudies import IUH
 
 
@@ -256,10 +257,73 @@ def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=Fa
         plt.quiver(lons[z:-z,z:-z][::skip,::skip], lats[z:-z,z:-z][::skip,::skip], V_LM[0][z:-z,z:-z][::skip,::skip], V_LM[1][z:-z,z:-z][::skip,::skip], transform=ccrs.PlateCarree())
         plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and LM motion conv. averaged with r="+str(round(2.2*r_conv,1))+"km")
         
-        plt.savefig(figname)
+        #plt.savefig(figname)
         
     if ret:
         return V_RM, V_LM
+
+
+#function plotting and putting into perspective the influence of opposite signed SCs on Bunkers magnitude
+def SC_decreases_Bunkers(fname_p, fname_s, r_conv, z=False):
+    V_RM, V_LM = bunkers_motion(fname_p, fname_s, r_conv, plot=False, ret=True)
+    V_RM, V_LM = np.linalg.norm(V_RM, axis=0), np.linalg.norm(V_LM, axis=0) #take the norm
+    
+    with xr.open_dataset(fname_s) as dset:
+        lats = dset.variables['lat']
+        lons = dset.variables['lon']
+    
+    dtstr = fname_p[-18:-4] #adjust depending on the filename format !
+    dtobj = pd.to_datetime(dtstr, format="%Y%m%d%H%M%S")
+    dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
+    if not z:
+        z = r_conv # the "zoom": discards the edges in the plot to get rid of the edge effect
+        figname = dtstr
+    else:
+        figname = dtstr + "_zoom"
+        
+    resol = '10m'  # use data at this scale
+    bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
+    ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
+    
+    # IUH data
+    iuh = np.array(IUH(fname_p, fname_s))
+    iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
+    #iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
+    #norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
+    #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
+    #ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
+    #bound_iuh = [-150,-125,-100,-75,-50,50,75,100,125,150]
+    
+    # contours of the iuh fields
+    iuh_pos = np.where(iuh > 0, iuh, 0)
+    iuh_neg = np.where(iuh < 0, iuh, 0)
+    iuh_pos_cont = find_boundaries(iuh_pos, mode='inner', background=0)
+    iuh_neg_cont = find_boundaries(iuh_neg, mode='inner', background=0)
+    
+    fig = plt.figure(figsize=(6,12))
+    
+    ax = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
+    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+    ax.add_feature(ocean, linewidth=0.2)
+    cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], V_RM[z:-z,z:-z], cmap="Reds", transform=ccrs.PlateCarree())
+    if np.any(iuh_neg_cont):
+        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_neg_cont[z:-z,z:-z], colors=['None','black'], transform=ccrs.PlateCarree())
+    else:
+        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_neg_cont[z:-z,z:-z], colors='None', transform=ccrs.PlateCarree())
+    plt.colorbar(cont, orientation='horizontal', label=r"IUH<-50 (black contours) and RM Bunkers magnitude (black shading)")
+    plt.title(dtdisp)
+    
+    ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
+    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+    ax.add_feature(ocean, linewidth=0.2)
+    cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], V_LM[z:-z,z:-z], cmap="Reds", transform=ccrs.PlateCarree())
+    if np.any(iuh_neg_cont):
+        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_pos_cont[z:-z,z:-z], colors=['None','black'], transform=ccrs.PlateCarree())
+    else:
+        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_pos_cont[z:-z,z:-z], colors='None', transform=ccrs.PlateCarree())
+    plt.colorbar(cont, orientation='horizontal', label=r"IUH>50 (black contours) and LM Bunkers magnitude (red shading)")
+    
+    #plt.savefig(figname)
 
 #================================================================================================================================
 # MAIN
@@ -268,8 +332,8 @@ def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=Fa
 # Plot wind shear magnitude together with IUH 2D fields
 
 #import case studies files
-day = date(2021, 6, 28) # date to be filled
-hours = np.array(range(13,21)) # to be filled according to the considered period of the day
+day = date(2021, 6, 29) # date to be filled
+hours = np.array(range(13,20)) # to be filled according to the considered period of the day
 mins = 0 # to be filled according to the output names
 secs = 0 # to be filled according to the output names
 cut = "largecut" # to be filled according to the cut type
@@ -291,4 +355,4 @@ for t in alltimes:
 
 # plot the chosen time shots
 for i in range(np.size(allfiles_p)):
-    bunkers_motion(allfiles_p[i], allfiles_s[i], z=80, r_conv=15, skip=7)
+    SC_decreases_Bunkers(allfiles_p[i], allfiles_s[i], r_conv=15)
