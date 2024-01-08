@@ -310,7 +310,7 @@ def SC_decreases_Bunkers(fname_p, fname_s, r_conv, z=False):
         ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_neg_cont[z:-z,z:-z], colors=['None','black'], transform=ccrs.PlateCarree())
     else:
         ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_neg_cont[z:-z,z:-z], colors='None', transform=ccrs.PlateCarree())
-    plt.colorbar(cont, orientation='horizontal', label=r"IUH<-50 (black contours) and RM Bunkers magnitude (black shading)")
+    plt.colorbar(cont, orientation='horizontal', label=r"IUH<-50 (black contours) and RM Bunkers magnitude (red shading)")
     plt.title(dtdisp)
     
     ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
