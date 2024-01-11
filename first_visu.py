@@ -9,6 +9,28 @@ from datetime import date, time, datetime
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import TwoSlopeNorm
 
+#==========================================================================================================================
+# check the cut limits
+cut = "swisscut"
+day = "20210713"
+h = "14"
+
+with xr.open_dataset("/scratch/snx3000/mblanc/UHfiles/"+cut+"_lffd"+day+h+"0000p.nc") as dset:
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
+print(round(float(np.min(lons)),2), round(float(np.max(lons)),2), round(float(np.min(lats)),2), round(float(np.max(lats)),2), sep=',')
+
+with xr.open_dataset("/scratch/snx3000/mblanc/UHfiles/"+cut+"_PSlffd"+day+h+"0000.nc") as dset:
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
+print(round(float(np.min(lons)),2), round(float(np.max(lons)),2), round(float(np.min(lats)),2), round(float(np.max(lats)),2), sep=',')
+
+with xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_masks_"+day+".nc") as dset:
+    lats = dset.variables['lat']
+    lons = dset.variables['lon']
+print(round(float(np.min(lons)),2), round(float(np.max(lons)),2), round(float(np.min(lats)),2), round(float(np.max(lats)),2), sep=',')
+
+#==========================================================================================================================
  
 # hail cell masks
 with xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_masks_20130727.nc") as dset:
@@ -28,7 +50,7 @@ with xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tr
 with open("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_tracks_20210713.json", "r") as read_file:
     dset = json.load(read_file)
     
-print(dset)
+# print(dset)
 
 #==========================================================================================================================
 
