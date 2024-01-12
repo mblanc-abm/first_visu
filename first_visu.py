@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import xarray as xr
 import cartopy.crs as ccrs
@@ -8,6 +9,23 @@ import json
 from datetime import date, time, datetime
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import TwoSlopeNorm
+
+#==========================================================================================================================
+# open full observational dataset
+usecols = ['ID','time','mesostorm','mesohailstorm','lon','lat','area','vel_x','vel_y','altitude','slope','max_CPC','mean_CPC','max_MESHS','mean_MESHS','p_radar','p_dz','p_z_0','p_z_100','p_v_mean','p_d_mean','n_radar','n_dz','n_z_0','n_z_100','n_v_mean','n_d_mean']
+fullset = pd.read_csv("/scratch/snx3000/mblanc/observations/Full_dataset_thunderstorm_types.csv", sep=';', usecols=usecols)
+fullset['time'] = pd.to_datetime(fullset['time'], format="%Y%m%d%H%M")
+fullset = fullset.reindex(columns=usecols)
+strdays = [dt.strftime("%Y%m%d") for dt in fullset['time']]
+fullset['ID'] = round(fullset['ID']%10000)
+
+#selection based on a given day
+sel_day = "20210713"
+selection = fullset[np.isin(strdays, sel_day)]
+
+#selection based on a given ID
+sel_ids = [2021071218100030]#, 2021071221500035]
+selection = fullset[np.isin(fullset['ID'], sel_ids)]
 
 #==========================================================================================================================
 # check the cut limits
@@ -47,10 +65,10 @@ with xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tr
 
 
 # hail cell tracks
-with open("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_tracks_20210713.json", "r") as read_file:
+with open("/scratch/snx3000/mblanc/CS_tracker/output/supercell_20210620.json", "r") as read_file:
     dset = json.load(read_file)
     
-# print(dset)
+print(dset['SC_data'])
 
 #==========================================================================================================================
 
