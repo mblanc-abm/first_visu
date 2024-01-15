@@ -118,7 +118,7 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
     iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
     norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-    levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
+    #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
     ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
     
     # Precipitation data
@@ -127,7 +127,7 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
     prec[prec<0.1] = np.nan # mask regions of very small precipitation to smoothen the backgroud
     prec_max = 60 # set here the maximum rain rate you want to display, threshold + prominence
     norm_prec = TwoSlopeNorm(vmin=0, vcenter=0.5*prec_max, vmax=prec_max)
-    levels_prec = np.linspace(0, prec_max, 23)
+    #levels_prec = np.linspace(0, prec_max, 23)
     ticks_prec = np.arange(0, prec_max+1, 5)
     
     # Hail data
@@ -135,28 +135,28 @@ def plot_IUH_prec_hail(fname_p, fname_s, prec_fname, hail_fname):
         hail = np.array(dset['DHAIL_MX'][0])
     hail[hail<0.2] = np.nan # mask regions of very small hail to smoothen the backgroud
     hail_max = 40 # set here the maximum hail diameter you want to display
-    levels_hail = np.linspace(0, hail_max, 22) # adjust the number of levels at your convenience
+    norm_hail = TwoSlopeNorm(vmin=0, vcenter=0.5*hail_max, vmax=hail_max)
     
     # plot
     fig = plt.figure(figsize=(6,12))
     
     ax = fig.add_subplot(3, 1, 1, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, levels=levels_iuh, extend="both", transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
+    cont = ax.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
     plt.colorbar(cont, ticks=ticks_iuh, orientation='horizontal', label=r"IUH ($m^2/s^2$)")
     plt.title(dtdisp)
     
     ax = fig.add_subplot(3, 1, 2, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, prec, cmap="plasma", norm=norm_prec, levels=levels_prec, extend="max", transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
+    cont = ax.pcolormesh(lons, lats, prec, cmap="plasma", norm=norm_prec, transform=ccrs.PlateCarree())
     plt.colorbar(cont, ticks=ticks_prec, orientation='horizontal', label="Rain rate (mm/h)")
     
     ax = fig.add_subplot(3, 1, 3, projection=ccrs.PlateCarree())
-    cont = ax.contourf(lons, lats, hail, cmap="plasma", levels=levels_hail, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
+    cont = ax.pcolormesh(lons, lats, hail, cmap="plasma", norm=norm_hail, transform=ccrs.PlateCarree())
     plt.colorbar(cont, orientation='horizontal', label="Maximum hail diameter (mm)")   
     
 
@@ -190,9 +190,9 @@ def plot_IUH(fname_p, fname_s):
     # plot
     plt.figure()
     ax = plt.axes(projection=ccrs.PlateCarree())
-    cont = plt.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm, transform=ccrs.PlateCarree())
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
     ax.add_feature(ocean, linewidth=0.2)
+    cont = plt.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm, transform=ccrs.PlateCarree())
     plt.colorbar(cont, ticks=ticks_iuh, orientation='horizontal', label=r"IUH ($m^2/s^2$)")
     plt.title(dtdisp)
    
@@ -203,36 +203,36 @@ def plot_IUH(fname_p, fname_s):
 #================================================================================================================================
 
 #import files with wind variables U, V, W of a certain day, considering switzerland
-# day = date(2021, 6, 28) # date to be filled
-# hours = np.array(range(13,14)) # to be filled according to the considered period of the day
-# mins = 0 # to be filled according to the output names
-# secs = 0 # to be filled according to the output names
-# cut = "largecut" # to be filled according to the cut type
+day = date(2019, 6, 13) # date to be filled
+hours = np.array(range(17,20)) # to be filled according to the considered period of the day
+mins = 0 # to be filled according to the output names
+secs = 0 # to be filled according to the output names
+cut = "largecut" # to be filled according to the cut type
 
-# repo_path = "/scratch/snx3000/mblanc/UHfiles/" # + day.strftime("%Y%m%d") + "/"
-# filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
-# filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
-# #filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
-# #filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
+repo_path = "/scratch/snx3000/mblanc/UHfiles/" # + day.strftime("%Y%m%d") + "/"
+filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
+filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
+filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
+filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
 
-# alltimes = [] # all times within the considered period
-# for h in hours:
-#     t = time(h, mins, secs)
-#     alltimes.append(t.strftime("%H%M%S"))
+alltimes = [] # all times within the considered period
+for h in hours:
+    t = time(h, mins, secs)
+    alltimes.append(t.strftime("%H%M%S"))
         
-# allfiles_p = [] # all files to be plotted in the directory
-# allfiles_s = []
-# #allfiles_prec = []
-# #allfiles_hail = []
-# for t in alltimes:
-#     allfiles_p.append(repo_path + filename_p + t + "p.nc")
-#     allfiles_s.append(repo_path + filename_s + t + ".nc")
-#     #allfiles_prec.append(repo_path + filename_prec + t + ".nc")
-#     #allfiles_hail.append(repo_path + filename_hail + t + ".nc")
+allfiles_p = [] # all files to be plotted in the directory
+allfiles_s = []
+allfiles_prec = []
+allfiles_hail = []
+for t in alltimes:
+    allfiles_p.append(repo_path + filename_p + t + "p.nc")
+    allfiles_s.append(repo_path + filename_s + t + ".nc")
+    allfiles_prec.append(repo_path + filename_prec + t + ".nc")
+    allfiles_hail.append(repo_path + filename_hail + t + ".nc")
 
-# #plot the chosen time shots
-# for i in range(len(allfiles_p)):
-#     plot_IUH(allfiles_p[i], allfiles_s[i])
+#plot the chosen time shots
+for i in range(len(allfiles_p)):
+    plot_IUH_prec_hail(allfiles_p[i], allfiles_s[i], allfiles_prec[i], allfiles_hail[i])
 
 
 #========================================================================================================================================
