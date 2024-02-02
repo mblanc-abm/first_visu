@@ -75,12 +75,18 @@ def zeta_plev(fname, plev, R_const=True, alt0=False, np_grad=False):
 
 # function computing the root mean square error of a matrix with respect to a reference matrix of the same shape
 def RMSE(M, Mref):
-    return np.sqrt(np.sum((M-Mref)**2)/np.size(M))
+    M = np.array(M)
+    return np.sqrt(np.nansum((M-Mref)**2)/np.count_nonzero(~np.isnan(M)))
 
+
+def relative_error(M, Mref):
+    ratio = np.array(M/Mref)
+    ratio[np.isinf(ratio)] = np.nan
+    return RMSE(ratio, 1)
 
 
 # function computing vertical vorticity field on a certain pressure level given the wind field contained in a single time shot file
-def zeta_grad_plev(fname, plev, npgrad=True, matr=False):
+def zeta_grad_plev(fname, plev, npgrad=True, matr=False, R_const=True, alt0=False):
     #input: fname (str): complete file path
     #       plev (int): pressure level considered, index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
     #output: UH (2D array)
@@ -89,7 +95,7 @@ def zeta_grad_plev(fname, plev, npgrad=True, matr=False):
         lats = dataset.variables['lat']
         lons = dataset.variables['lon']
         #pres = dataset.variables['pressure']
-        #Z = dataset.variables['FI'][0][plev]/g # geopotental height, 2D: (lat,lon). We assume here that geop height approximates well altitude
+        Z = dataset.variables['FI'][0][plev]/g # geopotental height, 2D: (lat,lon). We assume here that geop height approximates well altitude
         u = dataset['U'][0][plev] # 2D: lat, lon
         v = dataset['V'][0][plev] # same. ARE U, V and W staggered ?? here I assume them unstaggered
         #w = dataset['W'][0][plev]
@@ -97,8 +103,18 @@ def zeta_grad_plev(fname, plev, npgrad=True, matr=False):
     if npgrad or matr:
         dlon = np.deg2rad(np.lib.pad(lons, ((0,0),(0,1)), mode='constant', constant_values=np.nan)[:,1:] - np.lib.pad(lons, ((0,0),(1,0)), mode='constant', constant_values=np.nan)[:,:-1])
         dlat =  np.deg2rad(np.lib.pad(lats, ((0,1),(0,0)), mode='constant', constant_values=np.nan)[1:,:] - np.lib.pad(lats, ((1,0),(0,0)), mode='constant', constant_values=np.nan)[:-1,:])
-        dx = Rm*np.cos(np.deg2rad(lats))*dlon
-        dy = Rm*dlat
+        
+        if R_const and alt0:
+            r = Rm
+        elif R_const and not alt0:
+            r = Rm + Z
+        elif alt0 and not R_const:
+            r = R(lats, 0)
+        else:
+            r = R(lats, Z)
+        
+        dx = r*np.cos(np.deg2rad(lats))*dlon
+        dy = r*dlat
     
     if npgrad:  
         zeta = np.gradient(v, axis=1)/dx - np.gradient(u, axis=0)/dy
@@ -126,36 +142,61 @@ def zeta_grad_plev(fname, plev, npgrad=True, matr=False):
 #================================================================================================================================
 
 # 1) compare the influence of the latitudinal variation of the Earth's radius and the altitulde upon the vertical vorticity
-fname = "/scratch/snx3000/mblanc/UHfiles/swisscut_lffd20210713140000p.nc"
-p = 4
+#fname = "/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20210713120000p.nc"
+fname = "/scratch/snx3000/mblanc/UHfiles/swisscut_lffd20210713150000p.nc"
 
 rmse_Rconst_alt0 = []
-rmse_Rconst_alt = []
+# rmse_Rconst_alt = []
+# rmse_R_alt0 = []
+relerr_Rconst_alt0 = []
+# relerr_Rconst_alt = []
+# relerr_R_alt0 = []
 for p in range(8):
-    zeta_Rconst_alt0 = zeta_plev(fname, p, True, True)
-    zeta_Rconst_alt = zeta_plev(fname, p, True, False)
-    zeta_R_alt = zeta_plev(fname, p, False, False)
+    zeta_Rconst_alt0 = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=True, alt0=True) #zeta_plev(fname, p, True, True)
+    # zeta_Rconst_alt = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=True, alt0=False) #zeta_plev(fname, p, True, False)
+    # zeta_R_alt0 = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=False, alt0=True)
+    zeta_R_alt = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=False, alt0=False) #zeta_plev(fname, p, False, False)
+    
     rmse_Rconst_alt0.append(RMSE(zeta_Rconst_alt0, zeta_R_alt))
-    rmse_Rconst_alt.append(RMSE(zeta_Rconst_alt, zeta_R_alt))
+    # rmse_Rconst_alt.append(RMSE(zeta_Rconst_alt, zeta_R_alt))
+    # rmse_R_alt0.append(RMSE(zeta_R_alt0, zeta_R_alt))
+    
+    relerr_Rconst_alt0.append(relative_error(zeta_Rconst_alt0, zeta_R_alt))
+    # relerr_Rconst_alt.append(RMSE(zeta_Rconst_alt, zeta_R_alt)/np.nanmean(zeta_R_alt))
+    # relerr_R_alt0.append(RMSE(zeta_R_alt0, zeta_R_alt)/np.nanmean(zeta_R_alt))
 
-print(np.mean(rmse_Rconst_alt0)) #3.24624542107405e-07
-print(np.mean(rmse_Rconst_alt)) #3.52677091439429e-07
+# absolute error : RMSE
+print(np.mean(rmse_Rconst_alt0)) #3.24624542107405e-07 for swiss CS
+# print(np.mean(rmse_Rconst_alt)) #3.52677091439429e-07
+# print(np.mean(rmse_R_alt0)) #5.833430884003129e-07
+
+# relative error : RMSE/mean(zeta)
+print(np.mean(relerr_Rconst_alt0)) # 0.032 % for swiss CS
+# print(np.mean(relerr_Rconst_alt)) # 0.21 %
+# print(np.mean(relerr_R_alt0)) # 0.51 %
 
 # compare the computatial time of the 3 methods
-t1 = time.time()
-zeta_Rconst_alt0 = zeta_plev(fname, p, True, True)
-t2 = time.time()
-dt_Rconst_alt0 = t2 - t1 # 243.8
+p = 4
 
 t1 = time.time()
-zeta_Rconst_alt = zeta_plev(fname, p, True, False)
+zeta_Rconst_alt0 = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=True, alt0=True)
 t2 = time.time()
-dt_Rconst_alt = t2 - t1 # 241.8
+dt_Rconst_alt0 = t2 - t1 # 243.8 / 58.46 ms
 
 t1 = time.time()
-zeta_R_alt = zeta_plev(fname, p, False, False)
+zeta_Rconst_alt = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=True, alt0=False)
 t2 = time.time()
-dt_R_alt = t2 - t1 #268.4
+dt_Rconst_alt = t2 - t1 # 241.8 / 28.98 ms
+
+t1 = time.time()
+zeta_R_alt0 = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=False, alt0=True)
+t2 = time.time()
+dt_R_alt0 = t2 - t1 # - / 28.68 ms
+
+t1 = time.time()
+zeta_R_alt = zeta_grad_plev(fname, p, npgrad=False, matr=True, R_const=False, alt0=False)
+t2 = time.time()
+dt_R_alt = t2 - t1 #268.4 / 37.12 ms
 
 
 # 2) compare results and computatinal times between np.gradient, matrix and for loop differentiation methods
