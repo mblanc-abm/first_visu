@@ -11,22 +11,47 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.colors import TwoSlopeNorm
 
 #==========================================================================================================================
+# elevation map
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/lffd20101019000000c.nc") as dset:
+    z = dset['HSURF'][0]
+    #Z = dset['FIS'][0]/9.80665 # np.mean(abs(Z-z)) = 1.5e-6 m !
+    lons = dset["lon"].values
+    lats = dset["lat"].values
+
+#zl, zr, zb, zt = 200, 1, 200, 1 #smart cut for entire domain
+zl, zr, zb, zt = 750, 400, 570, 700 #cut for Alpine region
+
+resol = '10m'  # use data at this scale
+bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
+coastline = cfeature.NaturalEarthFeature('physical', 'coastline', scale=resol, facecolor='none')
+
+fig = plt.figure()
+ax = plt.axes(projection=ccrs.PlateCarree())
+ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+ax.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.3)
+cont = plt.pcolormesh(lons[zb:-zt,zl:-zr], lats[zb:-zt,zl:-zr], z[zb:-zt,zl:-zr], cmap="Greys", transform=ccrs.PlateCarree())
+plt.colorbar(cont, orientation='horizontal', label="Altitude ASL (m)")
+plt.title("Elevation map: Alpine region")
+fig.savefig("elevation_map_alps.png", dpi=300)
+
+#==========================================================================================================================
 # open full observational dataset
 usecols = ['ID','time','mesostorm','mesohailstorm','lon','lat','area','vel_x','vel_y','altitude','slope','max_CPC','mean_CPC','max_MESHS','mean_MESHS','p_radar','p_dz','p_z_0','p_z_100','p_v_mean','p_d_mean','n_radar','n_dz','n_z_0','n_z_100','n_v_mean','n_d_mean']
 fullset = pd.read_csv("/scratch/snx3000/mblanc/observations/Full_dataset_thunderstorm_types.csv", sep=';', usecols=usecols)
 fullset['time'] = pd.to_datetime(fullset['time'], format="%Y%m%d%H%M")
 fullset = fullset.reindex(columns=usecols)
 strdays = [dt.strftime("%Y%m%d") for dt in fullset['time']]
-fullset['ID'] = round(fullset['ID']%10000)
+fullset['ID'] = round(fullset['ID'])
 
 #selection based on a given day
-sel_day = "20210713"
+sel_day = "20190611"
 selection = fullset[np.isin(strdays, sel_day)]
+selection['ID'] = selection['ID'] % 10000
 
 #selection based on a given ID
-sel_ids = [2021071218100030]#, 2021071221500035]
+sel_ids = [2019061114300008, 2019061122050060, 2019061118550036, 2019061113400021, 2019061100000106]
 selection = fullset[np.isin(fullset['ID'], sel_ids)]
-
+selection['ID'] = selection['ID'] % 10000
 #==========================================================================================================================
 # check the cut limits
 cut = "swisscut"
@@ -56,19 +81,30 @@ with xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_masks_2
     dset.variables.keys()
     dset['cell_mask'][53].plot(cmap='jet')
 
-
 # gap filled swath
 with xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/gap_filled_20190707.nc") as dset:
     print(dset)
     dset.variables.keys()
     dset['cell_mask'][10].plot(cmap='jet')
 
-
-# hail cell tracks
-with open("/scratch/snx3000/mblanc/CS_tracker/output/supercell_20210620.json", "r") as read_file:
+# rain tracks
+with open("/scratch/snx3000/mblanc/cell_tracker/CaseStudies/outfiles/cell_tracks_20210713.json", "r") as read_file:
     dset = json.load(read_file)
-    
-print(dset['SC_data'])
+print(dset['cell_data'][3]['max_val'])
+
+# supercells info CS
+with open("/scratch/snx3000/mblanc/SDT_output/CaseStudies/supercell_20120630.json", "r") as read_file:
+    dset = json.load(read_file)
+print(dset) #dset['supercell_data'])
+
+# supercells info domain
+with open("/scratch/snx3000/mblanc/SDT_output/seasons/2020/supercell_20200401.json", "r") as read_file:
+    dset = json.load(read_file)
+print(dset)
+
+#meso masks CS
+with xr.open_dataset("/scratch/snx3000/mblanc/SDT_output/CaseStudies/meso_masks_20170801.nc") as dset:
+    print(dset)
 
 #==========================================================================================================================
 
@@ -80,7 +116,7 @@ with xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/infiles/largecut_PREC
 
 
 #1h_3D outputs
-with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20201231230000p.nc") as dset:
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D_LPI/lffd20201231230000.nc") as dset:
     print(dset)
     dset.variables.keys()
     dset['cell_mask'][100].plot(cmap='jet')
@@ -88,7 +124,7 @@ with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulati
 #==========================================================================================================================
 
 #swiss_cut hail visualisation
-with xr.open_dataset("/scratch/snx3000/mblanc/20210713/swisscut_DHAILlffd20210713124000.nc") as dset:
+with xr.open_dataset("/scratch/snx3000/mblanc/20210713/swisscut_DHAILlffd20210713115000.nc") as dset:
     DHAIL = dset.variables['DHAIL_MX'][0, :, :]
     lats = dset.variables['lat']
     lons = dset.variables['lon']
