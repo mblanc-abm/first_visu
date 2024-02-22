@@ -35,8 +35,8 @@ plt.title("Elevation map: Alpine region")
 fig.savefig("elevation_map_alps.png", dpi=300)
 
 #==========================================================================================================================
-# open full observational dataset
-usecols = ['ID','time','mesostorm','mesohailstorm','lon','lat','area','vel_x','vel_y','altitude','slope','max_CPC','mean_CPC','max_MESHS','mean_MESHS','p_radar','p_dz','p_z_0','p_z_100','p_v_mean','p_d_mean','n_radar','n_dz','n_z_0','n_z_100','n_v_mean','n_d_mean']
+# 2016-2021 thunderstorm observational dataset
+usecols = ['ID','time','mesostorm','mesohailstorm','lon','lat','area','vel_x','vel_y','altitude','slope','max_CPC','mean_CPC','max_MESHS','mean_MESHS','p_radar','p_x','p_y','p_dz','p_z_0','p_z_100','p_v_mean','p_d_mean','n_radar','n_x','n_y','n_dz','n_z_0','n_z_100','n_v_mean','n_d_mean']
 fullset = pd.read_csv("/scratch/snx3000/mblanc/observations/Full_dataset_thunderstorm_types.csv", sep=';', usecols=usecols)
 fullset['time'] = pd.to_datetime(fullset['time'], format="%Y%m%d%H%M")
 fullset = fullset.reindex(columns=usecols)
@@ -44,14 +44,25 @@ strdays = [dt.strftime("%Y%m%d") for dt in fullset['time']]
 fullset['ID'] = round(fullset['ID'])
 
 #selection based on a given day
-sel_day = "20190611"
+sel_day = "20210708"
 selection = fullset[np.isin(strdays, sel_day)]
 selection['ID'] = selection['ID'] % 10000
 
-#selection based on a given ID
-sel_ids = [2019061114300008, 2019061122050060, 2019061118550036, 2019061113400021, 2019061100000106]
+#selection based on given IDs
+sel_ids = [2019061122050060, 2019061023450003]
 selection = fullset[np.isin(fullset['ID'], sel_ids)]
 selection['ID'] = selection['ID'] % 10000
+
+# selection based on mesostorms
+selection = fullset[fullset['mesostorm']==1]
+selection['ID'] = selection['ID'] % 10000
+
+# 2022 meso dataset
+mesoset = pd.read_csv("/scratch/snx3000/mblanc/observations/TRTc_mesostorm_2022.csv", sep=';')
+mesoset['time'] = [str(int(dt)) for dt in mesoset['time']]
+mesoset['time'] = pd.to_datetime(mesoset['time'])
+mesoset['ID'] = mesoset['ID']%10000
+
 #==========================================================================================================================
 # check the cut limits
 cut = "swisscut"
@@ -288,7 +299,7 @@ print("max(dy)=", np.nanmax(dy))
 with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_3D_plev/lffd20210712190000p.nc") as dset:
     pres = np.array(dset.variables['pressure'])
 
-with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20130712190000.nc") as dset:
+with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulations/RUN_2km_cosmo6_climate/4_lm_f/output/1h_2D/lffd20161106190000.nc") as dset:
     ps = np.array(dset['PS'][0])
 
 pbin = []
@@ -296,7 +307,7 @@ for p in pres:
     pbin.append(ps < p)
 
 for i in range(np.shape(pbin)[0]):
-    print("p=", pres[i], ": ", np.sum(pbin[i]), " grid points beneath surface (where p>ps)")
+    print("p=", round(pres[i]/100), ": ", np.sum(pbin[i]), " grid points beneath surface (where p>ps)")
 
 print("out of", np.size(pbin[0]))
 
