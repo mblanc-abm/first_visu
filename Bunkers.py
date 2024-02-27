@@ -1,9 +1,8 @@
-# This scripts aims at computing the Bunkers motions fields
+# This scripts aims at computing the local vertical wind shear and Bunkers motions fields on case studies
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from datetime import date, time
 import xarray as xr
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
@@ -20,12 +19,12 @@ from CaseStudies import IUH
 
 # function computing the 0-6 km wind shear at every grid point, plotting the resulting shear magnitude and vector
 # as well as the IUH 2D fields on case study domain
-def wind_shear(fname_p, fname_s, plot=True, ret=False):
+def wind_shear(fname_p, fname_s, plot=True, skip=10, save=False, ret=False):
     #input: fname_p (str): complete file path containing the wind fields (3D)
     #       fname_s (str): complete file path containing the surface pressure (2D)
     #       plot (bool): plotting option
     #       ret (bool): wind shear returning option
-    #output: 2D 0-6 km wind shear field
+    #output: 2D 0-6 km local wind shear field (no spatial average)
     #        if requested, plots the wind shear magnitude together with the IUH
     #        if requested, returns the wind shear vector
     
@@ -63,46 +62,47 @@ def wind_shear(fname_p, fname_s, plot=True, ret=False):
     dv = v_up - v_down
     
     if plot:
+        
         dtstr = fname_p[-18:-4] #adjust depending on the filename format !
         dtobj = pd.to_datetime(dtstr, format="%Y%m%d%H%M%S")
         dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
             
         resol = '10m'  # use data at this scale
         bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
-        ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
+        coastline = cfeature.NaturalEarthFeature('physical', 'coastline', scale=resol, facecolor='none')
         
+        # IUH data and parameters
         iuh = np.array(IUH(fname_p, fname_s))
         iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
         iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
         norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-        #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
         ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
         
+        # wind shear magnitude and parameters
         S = np.array(np.sqrt(du**2 + dv**2)) #wind shear magnitude field
-        Smax = 50 # set here the maximum shear magnitude you want to display
-        Snorm = TwoSlopeNorm(vmin=0, vcenter=20, vmax=Smax)
-        skip = 10 #display arrow every skip grid point, for clarity
+        Smax = 40 # set here the maximum shear magnitude you want to display
+        norm_S = TwoSlopeNorm(vmin=0, vcenter=20, vmax=Smax)
+        ticks_S = np.arange(0, Smax+1, 5)
         
-        fig = plt.figure(figsize=(6,12))
+        fig = plt.figure(figsize=(6,9))
         
-        ax = fig.add_subplot(3, 1, 1, projection=ccrs.PlateCarree())
-        ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
-        ax.add_feature(ocean, linewidth=0.2)
-        cont = ax.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
-        plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$)")
-        plt.title(dtdisp)
+        ax1 = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
+        ax1.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+        ax1.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+        cont_iuh = ax1.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
+        ax1.quiver(lons[::skip,::skip], lats[::skip,::skip], du[::skip,::skip], dv[::skip,::skip], alpha=0.3, transform=ccrs.PlateCarree())
+        plt.colorbar(cont_iuh, orientation='horizontal', ticks=ticks_iuh, extend='both', label=r"IUH ($m^2/s^2$); grey arrows denote the wind shear")
         
-        ax = fig.add_subplot(3, 1, 2, projection=ccrs.PlateCarree())
-        ax.add_feature(ocean, linewidth=0.2)
-        ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
-        plt.pcolormesh(lons, lats, S, cmap="RdBu_r", transform=ccrs.PlateCarree(), norm=Snorm)
-        plt.colorbar(orientation='horizontal', label="0-6 km vertical wind shear magnitude (m/s)")
+        ax2 = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
+        ax2.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+        ax2.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+        cont_S = plt.pcolormesh(lons, lats, S, cmap="RdBu_r", transform=ccrs.PlateCarree(), norm=norm_S)
+        plt.colorbar(cont_S, orientation='horizontal', ticks=ticks_S, extend='max', label="0-6 km AGL wind shear magnitude (m/s)")
         
-        ax = fig.add_subplot(3, 1, 3, projection=ccrs.PlateCarree())
-        ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
-        ax.add_feature(ocean, linewidth=0.2)
-        plt.quiver(lons[::skip,::skip], lats[::skip,::skip], du[::skip,::skip], dv[::skip,::skip], transform=ccrs.PlateCarree())
-                
+        fig.suptitle(dtdisp)
+        
+        if save:
+            fig.savefig(dtstr + "_IUH_S.png", dpi=300)
 
     if ret:
         return np.array([du, dv])
@@ -146,7 +146,7 @@ def mean_wind(fname_p, fname_s):
 
 
 # function computing the Bunkers deviant motions vectors (right and left movers) for every grid point
-def bunkers_motion_raw(fname_p, fname_s, plot=True, ret=False):
+def bunkers_motion_raw(fname_p, fname_s, plot=False, ret=True):
     #input: fname_p (str): complete file path containing the wind fields (3D)
     #       fname_s (str): complete file path containing the surface pressure (2D)
     #output: 2D Bunkers velocity vectors for the right and left movers (RM and LM)
@@ -202,14 +202,15 @@ def bunkers_motion_raw(fname_p, fname_s, plot=True, ret=False):
 
 
 # function computing the Bunkers deviant motions vectors (right and left movers), convolution averaged for every grid point
-def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=False):
+def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, save=False, ret=False):
     #input: fname_p (str): complete file path containing the wind fields (3D)
     #       fname_s (str): complete file path containing the surface pressure (2D)
     #output: 2D Bunkers velocity vectors for the right and left movers (RM and LM)
     
     V_RM, V_LM = bunkers_motion_raw(fname_p, fname_s, plot=False, ret=True)
     footprint = disk(r_conv)
-    #the bunkers motion at every grid point is taken to be the average of the circular neighbouring raw bunkers motion
+    
+    #the bunkers motion at every grid point is taken to be the average convolution of the circular neighbouring raw bunkers motion
     for i in range(2):
         V_RM[i] = convolve2d(V_RM[i], footprint, mode='same')/np.sum(footprint)
         V_LM[i] = convolve2d(V_LM[i], footprint, mode='same')/np.sum(footprint)
@@ -224,47 +225,47 @@ def bunkers_motion(fname_p, fname_s, r_conv, z=False, skip=10, plot=True, ret=Fa
         dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
         if not z:
             z = r_conv # the "zoom": discards the edges in the plot to get rid of the edge effect
-            figname = dtstr
+            figname = dtstr + "_IUH_Bunkers.png"
         else:
-            figname = dtstr + "_zoom"
+            figname = dtstr + "_zoom_IUH_Bunkers.png"
             
         resol = '10m'  # use data at this scale
         bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
-        ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
+        coastline = cfeature.NaturalEarthFeature('physical', 'coastline', scale=resol, facecolor='none')
         
         iuh = np.array(IUH(fname_p, fname_s))
         iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
         iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
         norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-        #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
         ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
-        #bound_iuh = [-150,-125,-100,-75,-50,50,75,100,125,150]
         
-        fig = plt.figure(figsize=(6,12))
+        fig = plt.figure(figsize=(6,9))
         
-        ax = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
-        ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
-        ax.add_feature(ocean, linewidth=0.2)
-        cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
-        plt.quiver(lons[z:-z,z:-z][::skip,::skip], lats[z:-z,z:-z][::skip,::skip], V_RM[0][z:-z,z:-z][::skip,::skip], V_RM[1][z:-z,z:-z][::skip,::skip], transform=ccrs.PlateCarree())
-        plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and RM motion conv. averaged with r="+str(round(2.2*r_conv,1))+"km")
-        plt.title(dtdisp)
+        ax1 = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
+        ax1.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+        ax1.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+        cont_iuh = ax1.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
+        ax1.quiver(lons[z:-z,z:-z][::skip,::skip], lats[z:-z,z:-z][::skip,::skip], V_RM[0][z:-z,z:-z][::skip,::skip], V_RM[1][z:-z,z:-z][::skip,::skip], alpha=0.3, transform=ccrs.PlateCarree())
+        plt.colorbar(cont_iuh, orientation='horizontal', extend='both', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$); grey arrows denote RM motion")
         
-        ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
-        ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
-        ax.add_feature(ocean, linewidth=0.2)
-        cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
-        plt.quiver(lons[z:-z,z:-z][::skip,::skip], lats[z:-z,z:-z][::skip,::skip], V_LM[0][z:-z,z:-z][::skip,::skip], V_LM[1][z:-z,z:-z][::skip,::skip], transform=ccrs.PlateCarree())
-        plt.colorbar(cont, orientation='horizontal', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$) and LM motion conv. averaged with r="+str(round(2.2*r_conv,1))+"km")
+        ax2 = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
+        ax2.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+        ax2.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+        cont_iuh = ax2.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh[z:-z,z:-z], cmap="RdBu_r", norm=norm_iuh, transform=ccrs.PlateCarree())
+        ax2.quiver(lons[z:-z,z:-z][::skip,::skip], lats[z:-z,z:-z][::skip,::skip], V_LM[0][z:-z,z:-z][::skip,::skip], V_LM[1][z:-z,z:-z][::skip,::skip], alpha=0.3, transform=ccrs.PlateCarree())
+        plt.colorbar(cont_iuh, orientation='horizontal', extend='both', ticks=ticks_iuh, label=r"IUH ($m^2/s^2$); grey arrows denote LM motion")
         
-        #plt.savefig(figname)
+        fig.suptitle(dtdisp)
+        if save :
+            plt.savefig(figname, dpi=300)
         
     if ret:
         return V_RM, V_LM
 
 
 #function plotting and putting into perspective the influence of opposite signed SCs on Bunkers magnitude
-def SC_decreases_Bunkers(fname_p, fname_s, r_conv, z=False):
+def SC_decreases_Bunkers(fname_p, fname_s, r_conv, z=False, save=False):
+    
     V_RM, V_LM = bunkers_motion(fname_p, fname_s, r_conv, plot=False, ret=True)
     V_RM, V_LM = np.linalg.norm(V_RM, axis=0), np.linalg.norm(V_LM, axis=0) #take the norm
     
@@ -277,22 +278,22 @@ def SC_decreases_Bunkers(fname_p, fname_s, r_conv, z=False):
     dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
     if not z:
         z = r_conv # the "zoom": discards the edges in the plot to get rid of the edge effect
-        figname = dtstr
+        figname = dtstr + "_oppositeSC.png"
     else:
         figname = dtstr + "_zoom"
         
     resol = '10m'  # use data at this scale
     bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
-    ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
+    coastline = cfeature.NaturalEarthFeature('physical', 'coastline', scale=resol, facecolor='none')
     
     # IUH data
     iuh = np.array(IUH(fname_p, fname_s))
-    iuh[abs(iuh)<50] = np.nan # mask regions of very small IUH to smoothen the background
+    iuh[abs(iuh)<65] = np.nan # mask regions of very small IUH to smoothen the background
     #iuh_max = 150 # set here the maximum (or minimum in absolute value) IUH that you want to display
-    #norm_iuh = TwoSlopeNorm(vmin=-iuh_max, vcenter=0, vmax=iuh_max)
-    #levels_iuh = np.linspace(-iuh_max, iuh_max, 23)
-    #ticks_iuh = np.arange(-iuh_max, iuh_max+1, 25)
-    #bound_iuh = [-150,-125,-100,-75,-50,50,75,100,125,150]
+    
+    v_max = 30
+    norm_v = TwoSlopeNorm(vmin=0, vcenter=0.5*v_max, vmax=v_max)
+    ticks_v = np.arange(0, v_max+1, 5)
     
     # contours of the iuh fields
     iuh_pos = np.where(iuh > 0, iuh, 0)
@@ -300,59 +301,55 @@ def SC_decreases_Bunkers(fname_p, fname_s, r_conv, z=False):
     iuh_pos_cont = find_boundaries(iuh_pos, mode='inner', background=0)
     iuh_neg_cont = find_boundaries(iuh_neg, mode='inner', background=0)
     
-    fig = plt.figure(figsize=(6,12))
+    fig = plt.figure(figsize=(6,9))
     
-    ax = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
-    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
-    ax.add_feature(ocean, linewidth=0.2)
-    cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], V_RM[z:-z,z:-z], cmap="Reds", transform=ccrs.PlateCarree())
-    if np.any(iuh_neg_cont):
-        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_neg_cont[z:-z,z:-z], colors=['None','black'], transform=ccrs.PlateCarree())
-    else:
-        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_neg_cont[z:-z,z:-z], colors='None', transform=ccrs.PlateCarree())
-    plt.colorbar(cont, orientation='horizontal', label=r"IUH<-50 (black contours) and RM Bunkers magnitude (red shading)")
-    plt.title(dtdisp)
+    ax1 = fig.add_subplot(2, 1, 1, projection=ccrs.PlateCarree())
+    ax1.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+    ax1.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+    cont = ax1.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], V_RM[z:-z,z:-z], cmap="Reds", norm=norm_v, transform=ccrs.PlateCarree())
+    ax1.contour(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_neg_cont[z:-z,z:-z], colors=['black'], alpha=1, linewidths=0.5, transform=ccrs.PlateCarree())
+    plt.colorbar(cont, orientation='horizontal', extend='max', ticks=ticks_v, label=r"LM (black contours) and RM Bunkers magnitude (red shading)")
     
-    ax = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
-    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
-    ax.add_feature(ocean, linewidth=0.2)
-    cont = ax.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], V_LM[z:-z,z:-z], cmap="Reds", transform=ccrs.PlateCarree())
-    if np.any(iuh_neg_cont):
-        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_pos_cont[z:-z,z:-z], colors=['None','black'], transform=ccrs.PlateCarree())
-    else:
-        ax.contourf(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_pos_cont[z:-z,z:-z], colors='None', transform=ccrs.PlateCarree())
-    plt.colorbar(cont, orientation='horizontal', label=r"IUH>50 (black contours) and LM Bunkers magnitude (red shading)")
+    ax2 = fig.add_subplot(2, 1, 2, projection=ccrs.PlateCarree())
+    ax2.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+    ax2.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+    cont = ax2.pcolormesh(lons[z:-z,z:-z], lats[z:-z,z:-z], V_LM[z:-z,z:-z], cmap="Reds", norm=norm_v, transform=ccrs.PlateCarree())
+    ax2.contour(lons[z:-z,z:-z], lats[z:-z,z:-z], iuh_pos_cont[z:-z,z:-z], colors=['black'], alpha=1, linewidths=0.5, transform=ccrs.PlateCarree())
+    plt.colorbar(cont, orientation='horizontal', extend='max', ticks=ticks_v, label=r"RM (black contours) and LM Bunkers magnitude (red shading)")
     
-    #plt.savefig(figname)
+    fig.suptitle(dtdisp)
+    if save:
+        plt.savefig(figname, dpi=300)
 
 #================================================================================================================================
 # MAIN
 #================================================================================================================================
+## Plots ##
 
-# Plot wind shear magnitude together with IUH 2D fields
+# parameter to fill
+daystr = "20210713" # date of the case studies
+cut = "swisscut" # type of the cut
+save = True # option to save figures
+r_conv = 10 # (10 gp = 22km) Gropp et al. use r_conv~20km
+skip = 7 # advise 7 for swisscut and 10 for largecut
 
-#import case studies files
-day = date(2021, 6, 29) # date to be filled
-hours = np.array(range(13,20)) # to be filled according to the considered period of the day
-mins = 0 # to be filled according to the output names
-secs = 0 # to be filled according to the output names
-cut = "largecut" # to be filled according to the cut type
+# extract the hourly time steps
+infile = "/scratch/snx3000/mblanc/cell_tracker/CaseStudies/infiles/" + cut + "_PREClffd" + daystr + ".nc"
+with xr.open_dataset(infile) as dset:
+    times_5min = pd.to_datetime(dset['time'].values)
+times_hourly = [t for t in times_5min if t.strftime("%M")=="00"] # select hourly time steps
 
-repo_path = "/scratch/snx3000/mblanc/UHfiles/"
-filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
-filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
+# cuild the input filenames for wind shear, IUH, mean wind and Bunkers motion      
+fnames_p = [] 
+fnames_s = [] 
+for dt in times_hourly:
+    fnames_p.append("/scratch/snx3000/mblanc/UHfiles/" + cut + "_lffd" + dt.strftime("%Y%m%d%H%M%S") + "p.nc")
+    fnames_s.append("/scratch/snx3000/mblanc/UHfiles/" + cut + "_PSlffd" + dt.strftime("%Y%m%d%H%M%S") + ".nc")
 
-alltimes = [] # all times within the considered period
-for h in hours:
-    t = time(h, mins, secs)
-    alltimes.append(t.strftime("%H%M%S"))
-        
-allfiles_p = [] # all files to be plotted in the directory
-allfiles_s = []
-for t in alltimes:
-    allfiles_p.append(repo_path + filename_p + t + "p.nc")
-    allfiles_s.append(repo_path + filename_s + t + ".nc")
+# plot the desired fields at the hourly time steps of the case study
+for i in range(len(fnames_p)):
+    wind_shear(fnames_p[i], fnames_s[i], plot=True, skip=skip, save=save, ret=False)
+    bunkers_motion(fnames_p[i], fnames_s[i], r_conv, z=False, skip=skip, plot=True, save=save, ret=False)
+    SC_decreases_Bunkers(fnames_p[i], fnames_s[i], r_conv, z=False, save=save)
+    
 
-# plot the chosen time shots
-for i in range(np.size(allfiles_p)):
-    SC_decreases_Bunkers(allfiles_p[i], allfiles_s[i], r_conv=15)
