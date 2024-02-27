@@ -1,4 +1,6 @@
 # this script aims at plotting supercells trajectories from both observational and model data, on a case study
+# first draft of SC_trajectories.py located in SC_tracker
+
 import json
 import numpy as np
 import pandas as pd
@@ -10,12 +12,11 @@ import cartopy.feature as cfeature
 #=====================================================================================================================================================
 
 # data to be filled
-day = "20210620"
-cut = "swisscut"
+day = "20190611"
 
 # SC info
 with open("/scratch/snx3000/mblanc/SDT_output/CaseStudies/supercell_" + day + ".json", "r") as read_file:
-    SC_info = json.load(read_file)['SC_data']
+    SC_info = json.load(read_file)['supercell_data']
 SC_ids_mod = [SC_info[i]['rain_cell_id'] for i in range(len(SC_info))]
 
 # rain tracks
@@ -23,16 +24,16 @@ with open("/scratch/snx3000/mblanc/cell_tracker/CaseStudies/outfiles/cell_tracks
     rain_tracks = json.load(read_file)['cell_data']
 ncells = len(rain_tracks)
 # among the supercells, select their linked cells, namely parents, childs, merged to cells
-ids_to_add = []
-for sc_id in SC_ids_mod:
-    if rain_tracks[sc_id]['parent']:
-        ids_to_add.append(rain_tracks[sc_id]['parent'])
-    elif rain_tracks[sc_id]['merged_to']:
-        ids_to_add.append(rain_tracks[sc_id]['merged_to'])
-    elif rain_tracks[sc_id]['child']:
-        ids_to_add.append(rain_tracks[sc_id]['child'][0])
-# and add them to ids to consider for supercell activity
-SC_ids_mod.extend(ids_to_add)
+# ids_to_add = []
+# for sc_id in SC_ids_mod:
+#     if rain_tracks[sc_id]['parent']:
+#         ids_to_add.append(rain_tracks[sc_id]['parent'])
+#     elif rain_tracks[sc_id]['merged_to']:
+#         ids_to_add.append(rain_tracks[sc_id]['merged_to'])
+#     elif rain_tracks[sc_id]['child']:
+#         ids_to_add.append(rain_tracks[sc_id]['child'][0])
+# # and add them to ids to consider for supercell activity
+# SC_ids_mod.extend(ids_to_add)
 
 # restrict rain tracks to the considered supercells / cells
 rain_tracks = np.array(rain_tracks)
@@ -47,7 +48,7 @@ fullset['time'] = pd.to_datetime(fullset['time'], format="%Y%m%d%H%M")
 fullset['ID'] = round(fullset['ID'])
 
 # selection based on a given ID
-sel_ids = [2021062010000041, 2021062011300077, 2021062012200142, 2021062014350190, 2021062015400153, 2021062013100019]
+sel_ids = [2019061114300008, 2019061122050060, 2019061118550036, 2019061113400021, 2019061100000106]
 sel_ids_disp = [j%1000 for j in sel_ids]
 selection = fullset[np.isin(fullset['ID'], sel_ids)]
 selection['ID'] = round(selection['ID'] % 10000)
@@ -58,12 +59,6 @@ selection['ID'] = round(selection['ID'] % 10000)
 resol = '10m'  # use data at this scale
 bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
 ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
-
-# get the geographic static fields
-infile = "/scratch/snx3000/mblanc/cell_tracker/infiles/" + cut + "_PREClffd" + day + ".nc"  # file with the prec
-with xr.open_dataset(infile) as dset:
-    lats = dset.variables['lat']  # 2D matrix
-    lons = dset.variables['lon']  # 2D matrix
 
 # figure
 fig = plt.figure()#figsize=(6, 8))
