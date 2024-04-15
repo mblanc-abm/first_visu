@@ -92,7 +92,8 @@ def IUH(fname_p, fname_s):
     iuh_irreg = iuh + uh_irreg*Ra*temp[3]*dp/(g*pres[3])
     iuh_irreg = iuh_irreg*below_surface_bin # select the irregular grid points and leave the others to 0
     
-    return iuh_reg + iuh_irreg # fill in the holes so that IUH is defined at every single grid point
+    # fill in the holes so that IUH is defined at every single grid point; discard the NaNs on the edges and transform into an numpy array
+    return np.array(iuh_reg + iuh_irreg)[1:-1,1:-1]
 
 
 #compute and plot the one time shot IUH 2D field, together with the precipitatin and hail fields
@@ -198,41 +199,40 @@ def plot_IUH(fname_p, fname_s):
    
 
 #================================================================================================================================
-
 # MAIN
 #================================================================================================================================
 
-#import files with wind variables U, V, W of a certain day, considering switzerland
-day = date(2019, 6, 13) # date to be filled
-hours = np.array(range(17,20)) # to be filled according to the considered period of the day
-mins = 0 # to be filled according to the output names
-secs = 0 # to be filled according to the output names
-cut = "largecut" # to be filled according to the cut type
+# #import files with wind variables U, V, W of a certain day, considering switzerland
+# day = date(2019, 6, 13) # date to be filled
+# hours = np.array(range(17,20)) # to be filled according to the considered period of the day
+# mins = 0 # to be filled according to the output names
+# secs = 0 # to be filled according to the output names
+# cut = "largecut" # to be filled according to the cut type
 
-repo_path = "/scratch/snx3000/mblanc/UHfiles/" # + day.strftime("%Y%m%d") + "/"
-filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
-filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
-filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
-filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
+# repo_path = "/scratch/snx3000/mblanc/UHfiles/" # + day.strftime("%Y%m%d") + "/"
+# filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
+# filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
+# filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
+# filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
 
-alltimes = [] # all times within the considered period
-for h in hours:
-    t = time(h, mins, secs)
-    alltimes.append(t.strftime("%H%M%S"))
+# alltimes = [] # all times within the considered period
+# for h in hours:
+#     t = time(h, mins, secs)
+#     alltimes.append(t.strftime("%H%M%S"))
         
-allfiles_p = [] # all files to be plotted in the directory
-allfiles_s = []
-allfiles_prec = []
-allfiles_hail = []
-for t in alltimes:
-    allfiles_p.append(repo_path + filename_p + t + "p.nc")
-    allfiles_s.append(repo_path + filename_s + t + ".nc")
-    allfiles_prec.append(repo_path + filename_prec + t + ".nc")
-    allfiles_hail.append(repo_path + filename_hail + t + ".nc")
+# allfiles_p = [] # all files to be plotted in the directory
+# allfiles_s = []
+# allfiles_prec = []
+# allfiles_hail = []
+# for t in alltimes:
+#     allfiles_p.append(repo_path + filename_p + t + "p.nc")
+#     allfiles_s.append(repo_path + filename_s + t + ".nc")
+#     allfiles_prec.append(repo_path + filename_prec + t + ".nc")
+#     allfiles_hail.append(repo_path + filename_hail + t + ".nc")
 
-#plot the chosen time shots
-for i in range(len(allfiles_p)):
-    plot_IUH_prec_hail(allfiles_p[i], allfiles_s[i], allfiles_prec[i], allfiles_hail[i])
+# #plot the chosen time shots
+# for i in range(len(allfiles_p)):
+#     plot_IUH_prec_hail(allfiles_p[i], allfiles_s[i], allfiles_prec[i], allfiles_hail[i])
 
 
 #========================================================================================================================================
