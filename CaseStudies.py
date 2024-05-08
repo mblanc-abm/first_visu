@@ -93,7 +93,7 @@ def IUH(fname_p, fname_s):
     iuh_irreg = iuh_irreg*below_surface_bin # select the irregular grid points and leave the others to 0
     
     # fill in the holes so that IUH is defined at every single grid point; discard the NaNs on the edges and transform into an numpy array
-    return np.array(iuh_reg + iuh_irreg)[1:-1,1:-1]
+    return np.array(iuh_reg + iuh_irreg) #[1:-1,1:-1] keep the orginal size, despite nans
 
 
 #compute and plot the one time shot IUH 2D field, together with the precipitatin and hail fields
