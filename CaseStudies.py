@@ -3,8 +3,9 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-#import time as chrono
-#from datetime import date, time, datetime
+import time as chrono
+from datetime import date, time, datetime
+import pandas as pd
 import xarray as xr
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
@@ -19,14 +20,16 @@ g = 9.80665 # standard gravity at sea level (m/s^2)
 Ra = 287.05 #  Individual Gas Constant for air (J/K/kg)
 
 
-def zeta_plev(fname_p, plev):
+def zeta_plev(fname_p, fname_s, plev):
     """
-    computes the relative vertical vorticity 2D field over a given pressure level at a singel time shot
+    Computes the relative vertical vorticity 2D field over a given pressure level at a single time shot
 
     Parameters
     ----------
     fname_p : str
-        path to the 3D ressure file containing the wind fields
+        path to the 1h 3D pressure file containing the wind fields
+    fname_s : str
+        path to the 1h 2D surface file containing the surface pressure
     plev : int
         index of the considered pressure level, ie index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
 
@@ -34,15 +37,21 @@ def zeta_plev(fname_p, plev):
     -------
     zeta : 2D array
         relative vertical vorticity 2D field
-
     """
         
     # loading of the required variables
     with xr.open_dataset(fname_p) as dataset:
         lats = dataset.variables['lat']
         lons = dataset.variables['lon']
+        pres = dataset.variables['pressure']
         u = dataset['U'][0][plev] # 2D: lat, lon
         v = dataset['V'][0][plev] # same. U, V are unstaggered
+    
+    with xr.open_dataset(fname_s) as dset:
+        ps = dset['PS'][0] # 2D: lat, lon
+    
+    # select above ground level grid points
+    AGL_bin = ps > pres[plev]
     
     # computation of horizontal grid spacing
     dlon = np.deg2rad(np.lib.pad(lons, ((0,0),(0,1)), mode='constant', constant_values=np.nan)[:,1:] - np.lib.pad(lons, ((0,0),(1,0)), mode='constant', constant_values=np.nan)[:,:-1])
@@ -55,9 +64,12 @@ def zeta_plev(fname_p, plev):
     du = np.lib.pad(u, ((0,1),(0,0)), mode='constant', constant_values=np.nan)[1:,:] - np.lib.pad(u, ((1,0),(0,0)), mode='constant', constant_values=np.nan)[:-1,:]
     
     # finally relative vertical vorticity
-    zeta = dv/dx - du/dy
+    zeta = np.array(dv/dx - du/dy)
     
-    return np.array(zeta)
+    # set below ground level values to nans
+    zeta = np.where(AGL_bin, zeta, np.nan)
+    
+    return zeta
 
 
 # function computing updraft helicity field on a certain pressure level given the wind field contained in a single time shot file
@@ -238,43 +250,82 @@ def plot_IUH(fname_p, fname_s):
     cont = plt.pcolormesh(lons, lats, iuh, cmap="RdBu_r", norm=norm, transform=ccrs.PlateCarree())
     plt.colorbar(cont, ticks=ticks_iuh, orientation='horizontal', label=r"IUH ($m^2/s^2$)")
     plt.title(dtdisp)
-   
 
+
+def plot_zeta_plev(fname_p, fname_s, plev, save=False):
+    """
+    Plots the relative vertical vorticity 2D field over a given pressure level at a single time shot
+
+    Parameters
+    ----------
+    fname_p : str
+        path to the 1h 3D pressure file containing the wind fields
+    fname_s : str
+        path to the 1h 2D surface file containing the surface pressure
+    plev : int
+        index of the considered pressure level, ie index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
+    save : bool
+        option to save the figure
+
+    Returns
+    -------
+    zeta : 2D array
+        relative vertical vorticity 2D field
+    """
+    
+    # zeta data
+    zeta = zeta_plev(fname_p, fname_s, plev)
+    norm = TwoSlopeNorm(vcenter=0)
+    
+    # static fields
+    with xr.open_dataset(fname_p) as dset:
+        lats = dset.variables['lat']
+        lons = dset.variables['lon']
+        p = int(dset.variables['pressure'][plev])
+    
+    # timestamp
+    dtstr = fname_p[-18:-4] #adjust depending on the filename format !
+    dtobj = pd.to_datetime(dtstr, format="%Y%m%d%H%M%S")
+    dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
+    title = dtdisp + " ; " + str(round(p/100)) +  " hPa isobar"
+    figname = "zeta_" + dtstr + "_" + str(round(p/100)) +  "hPa.png"
+    
+    # load geographic features
+    resol = '10m'  # use data at this scale
+    bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
+    coastline = cfeature.NaturalEarthFeature('physical', 'coastline', scale=resol, facecolor='none')
+    rp = ccrs.RotatedPole(pole_longitude = -170, pole_latitude = 43)
+    
+    fig = plt.figure(figsize=(10,10))
+    ax = plt.axes(projection=rp)
+    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+    ax.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+    cont = ax.pcolormesh(lons, lats, zeta, cmap="RdBu_r", norm=norm, transform=ccrs.PlateCarree())
+    plt.colorbar(cont, orientation='horizontal', label=r"$\zeta$ ($s^{-1}$)")
+    
+    plt.title(title)
+    if save:
+        fig.savefig(figname, dpi=300)
+    
+    return
+ 
 #================================================================================================================================
 # MAIN
 #================================================================================================================================
+## plot zeta on a pressure level
 
-# #import files with wind variables U, V, W of a certain day, considering switzerland
-# day = date(2019, 6, 13) # date to be filled
-# hours = np.array(range(17,20)) # to be filled according to the considered period of the day
-# mins = 0 # to be filled according to the output names
-# secs = 0 # to be filled according to the output names
-# cut = "largecut" # to be filled according to the cut type
+day = "20120630" # date to be filled
+hours = np.arange(14,24) # to be filled according to the considered period of the day
+cut = "largecut" # to be filled according to the cut type
+plev = 4
 
-# repo_path = "/scratch/snx3000/mblanc/UHfiles/" # + day.strftime("%Y%m%d") + "/"
-# filename_p = cut + "_lffd" + day.strftime("%Y%m%d") # without .nc
-# filename_s = cut + "_PSlffd" + day.strftime("%Y%m%d") # without .nc
-# filename_prec = cut + "_PREClffd" + day.strftime("%Y%m%d") # without .nc
-# filename_hail = cut + "_HAILlffd" + day.strftime("%Y%m%d") # without .nc
+repo_path = "/scratch/snx3000/mblanc/UHfiles/"
+for h in hours:
+    fname_p = repo_path + cut + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
+    fname_s = repo_path + cut + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
+    plot_zeta_plev(fname_p, fname_s, plev)
 
-# alltimes = [] # all times within the considered period
-# for h in hours:
-#     t = time(h, mins, secs)
-#     alltimes.append(t.strftime("%H%M%S"))
-        
-# allfiles_p = [] # all files to be plotted in the directory
-# allfiles_s = []
-# allfiles_prec = []
-# allfiles_hail = []
-# for t in alltimes:
-#     allfiles_p.append(repo_path + filename_p + t + "p.nc")
-#     allfiles_s.append(repo_path + filename_s + t + ".nc")
-#     allfiles_prec.append(repo_path + filename_prec + t + ".nc")
-#     allfiles_hail.append(repo_path + filename_hail + t + ".nc")
 
-# #plot the chosen time shots
-# for i in range(len(allfiles_p)):
-#     plot_IUH_prec_hail(allfiles_p[i], allfiles_s[i], allfiles_prec[i], allfiles_hail[i])
 
 
 #========================================================================================================================================
