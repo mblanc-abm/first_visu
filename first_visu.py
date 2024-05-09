@@ -20,6 +20,7 @@ with xr.open_dataset("/project/pr133/velasque/cosmo_simulations/climate_simulati
 
 #zl, zr, zb, zt = 200, 1, 200, 1 #smart cut for entire domain
 zl, zr, zb, zt = 750, 400, 570, 700 #cut for Alpine region
+#zl, zr, zb, zt = 780, 550, 630, 720 #cut for swiss radar network
 
 resol = '10m'  # use data at this scale
 bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
@@ -59,8 +60,7 @@ selection['ID'] = selection['ID'] % 10000
 
 # 2022 meso dataset
 mesoset = pd.read_csv("/scratch/snx3000/mblanc/observations/TRTc_mesostorm_2022.csv", sep=';')
-mesoset['time'] = [str(int(dt)) for dt in mesoset['time']]
-mesoset['time'] = pd.to_datetime(mesoset['time'])
+mesoset['time'] = pd.to_datetime(mesoset['time'], format="%Y%m%d%H%M")
 mesoset['ID'] = mesoset['ID']%10000
 
 #==========================================================================================================================
@@ -99,22 +99,24 @@ with xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tr
     dset['cell_mask'][10].plot(cmap='jet')
 
 # rain tracks
-with open("/scratch/snx3000/mblanc/cell_tracker/CaseStudies/outfiles/cell_tracks_20210713.json", "r") as read_file:
+with open("/scratch/snx3000/mblanc/CT2/outfiles_CT2PTSM/cell_tracks_20210711.json", "r") as read_file:
     dset = json.load(read_file)
-print(dset['cell_data'][3]['max_val'])
+cells = dset['cell_data']
+childs = [cell for cell in cells if cell['parent'] is not None]
+print(cells[872])
 
 # supercells info CS
-with open("/scratch/snx3000/mblanc/SDT_output/CaseStudies/supercell_20120630.json", "r") as read_file:
+with open("/scratch/snx3000/mblanc/SDT1_output/CaseStudies/supercell_20190611.json", "r") as read_file:
     dset = json.load(read_file)
-print(dset) #dset['supercell_data'])
+print(dset['supercell_data'][11])
 
 # supercells info domain
-with open("/scratch/snx3000/mblanc/SDT_output/seasons/2020/supercell_20200401.json", "r") as read_file:
+with open("/scratch/snx3000/mblanc/SDT1_output/seasons/2020/supercell_20200401.json", "r") as read_file:
     dset = json.load(read_file)
 print(dset)
 
 #meso masks CS
-with xr.open_dataset("/scratch/snx3000/mblanc/SDT_output/CaseStudies/meso_masks_20170801.nc") as dset:
+with xr.open_dataset("/scratch/snx3000/mblanc/SDT1_output/CaseStudies/meso_masks_20170801.nc") as dset:
     print(dset)
 
 #==========================================================================================================================
@@ -338,3 +340,23 @@ def R(L):
 
 def Lz(R):
     return 10*np.log10(a*R**b)
+
+#========================================================================================================================================
+## debugging CS supercells IUH<65 values ##
+
+CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613', '20190614',
+           '20190820', '20210620', '20210628', '20210629', '20210708', '20210712', '20210713']
+typ = "mean"
+path = "/scratch/snx3000/mblanc/SDT1_output/CaseStudies/"
+
+for day in CS_days:
+    
+    file = path + "supercell_" + day + ".json"
+    
+    with open(file, "r") as read_file:
+        supercells = json.load(read_file)['supercell_data']
+    
+    for supercell in supercells:
+        SC_values = np.abs(supercell[typ + "_val"])
+        if np.any(SC_values < 65):
+            print("day ", day, " - cell ", supercell['rain_cell_id'])

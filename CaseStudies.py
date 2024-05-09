@@ -3,8 +3,8 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import time as chrono
-from datetime import date, time, datetime
+#import time as chrono
+#from datetime import date, time, datetime
 import xarray as xr
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
@@ -17,6 +17,48 @@ from matplotlib.colors import TwoSlopeNorm
 Rm = 6370000. # mean Earth's radius (m)
 g = 9.80665 # standard gravity at sea level (m/s^2)
 Ra = 287.05 #  Individual Gas Constant for air (J/K/kg)
+
+
+def zeta_plev(fname_p, plev):
+    """
+    computes the relative vertical vorticity 2D field over a given pressure level at a singel time shot
+
+    Parameters
+    ----------
+    fname_p : str
+        path to the 3D ressure file containing the wind fields
+    plev : int
+        index of the considered pressure level, ie index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
+
+    Returns
+    -------
+    zeta : 2D array
+        relative vertical vorticity 2D field
+
+    """
+        
+    # loading of the required variables
+    with xr.open_dataset(fname_p) as dataset:
+        lats = dataset.variables['lat']
+        lons = dataset.variables['lon']
+        u = dataset['U'][0][plev] # 2D: lat, lon
+        v = dataset['V'][0][plev] # same. U, V are unstaggered
+    
+    # computation of horizontal grid spacing
+    dlon = np.deg2rad(np.lib.pad(lons, ((0,0),(0,1)), mode='constant', constant_values=np.nan)[:,1:] - np.lib.pad(lons, ((0,0),(1,0)), mode='constant', constant_values=np.nan)[:,:-1])
+    dlat =  np.deg2rad(np.lib.pad(lats, ((0,1),(0,0)), mode='constant', constant_values=np.nan)[1:,:] - np.lib.pad(lats, ((1,0),(0,0)), mode='constant', constant_values=np.nan)[:-1,:])
+    dx = Rm*np.cos(np.deg2rad(lats))*dlon
+    dy = Rm*dlat
+    
+    # differentiate v and u with respect to x/lon and y/lat respectively
+    dv = np.lib.pad(v, ((0,0),(0,1)), mode='constant', constant_values=np.nan)[:,1:] - np.lib.pad(v, ((0,0),(1,0)), mode='constant', constant_values=np.nan)[:,:-1]
+    du = np.lib.pad(u, ((0,1),(0,0)), mode='constant', constant_values=np.nan)[1:,:] - np.lib.pad(u, ((1,0),(0,0)), mode='constant', constant_values=np.nan)[:-1,:]
+    
+    # finally relative vertical vorticity
+    zeta = dv/dx - du/dy
+    
+    return np.array(zeta)
+
 
 # function computing updraft helicity field on a certain pressure level given the wind field contained in a single time shot file
 def UH_plev(fname_p, plev):
