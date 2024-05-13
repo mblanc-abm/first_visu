@@ -9,7 +9,8 @@ import pandas as pd
 import xarray as xr
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import TwoSlopeNorm, BoundaryNorm
+from matplotlib.ticker import ScalarFormatter
 
 # GLOBAL VARIABLES AND FUNCTIONS
 #========================================================================================================================================
@@ -252,7 +253,7 @@ def plot_IUH(fname_p, fname_s):
     plt.title(dtdisp)
 
 
-def plot_zeta_plev(fname_p, fname_s, plev, save=False):
+def plot_zeta_plev(fname_p, fname_s, plev, w_th=None, save=False):
     """
     Plots the relative vertical vorticity 2D field over a given pressure level at a single time shot
 
@@ -264,6 +265,8 @@ def plot_zeta_plev(fname_p, fname_s, plev, save=False):
         path to the 1h 2D surface file containing the surface pressure
     plev : int
         index of the considered pressure level, ie index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
+    w_th : float
+        updraught velocity threshold; the vorticity field will be plotted on the w > w_th patches
     save : bool
         option to save the figure
 
@@ -275,20 +278,34 @@ def plot_zeta_plev(fname_p, fname_s, plev, save=False):
     
     # zeta data
     zeta = zeta_plev(fname_p, fname_s, plev)
-    norm = TwoSlopeNorm(vcenter=0)
+    bounds = np.array([-9, -7, -5, -3, -1, 1, 3, 5, 7, 9])*1e-3
+    #norm = TwoSlopeNorm(vcenter=0)
+    norm = BoundaryNorm(boundaries=bounds, ncolors=256, extend='both')    
     
-    # static fields
+    # pressure level and static fields
     with xr.open_dataset(fname_p) as dset:
         lats = dset.variables['lat']
         lons = dset.variables['lon']
         p = int(dset.variables['pressure'][plev])
+        if w_th:
+            w = dset['W'][0][plev]
     
     # timestamp
     dtstr = fname_p[-18:-4] #adjust depending on the filename format !
     dtobj = pd.to_datetime(dtstr, format="%Y%m%d%H%M%S")
     dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
-    title = dtdisp + " ; " + str(round(p/100)) +  " hPa isobar"
-    figname = "zeta_" + dtstr + "_" + str(round(p/100)) +  "hPa.png"
+    
+    # updraught velocity patches and figure title & name
+    if w_th:
+        wbin = np.array(w > w_th)
+        zeta = wbin*zeta
+        title = dtdisp + "; " + str(round(p/100)) +  " hPa; w>" + str(w_th) + " m/s"
+        figname = "zeta_" + dtstr + "_" + str(round(p/100)) +  "hPa_wth" + str(w_th) + ".png"
+    else:
+        title = dtdisp + " ; " + str(round(p/100)) +  " hPa isobar"
+        figname = "zeta_" + dtstr + "_" + str(round(p/100)) +  "hPa.png"
+    
+    zeta[np.abs(zeta)<0.0005] = np.nan # smoothen the background -> omit tiny values and turn masked values into nans
     
     # load geographic features
     resol = '10m'  # use data at this scale
@@ -301,33 +318,60 @@ def plot_zeta_plev(fname_p, fname_s, plev, save=False):
     ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
     ax.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
     cont = ax.pcolormesh(lons, lats, zeta, cmap="RdBu_r", norm=norm, transform=ccrs.PlateCarree())
-    plt.colorbar(cont, orientation='horizontal', label=r"$\zeta$ ($s^{-1}$)")
+    cbar = plt.colorbar(cont, orientation='horizontal', label=r"$\zeta$ ($s^{-1}$)", format='%1.0e')
+    formatter = ScalarFormatter(useMathText=True, useOffset=False)
+    formatter.set_powerlimits((0, 0))
+    cbar.ax.xaxis.set_major_formatter(formatter)
     
     plt.title(title)
     if save:
         fig.savefig(figname, dpi=300)
     
     return
- 
+
 #================================================================================================================================
 # MAIN
 #================================================================================================================================
-## plot zeta on a pressure level
+## plot zeta on a pressure level ##
 
-day = "20120630" # date to be filled
-hours = np.arange(14,24) # to be filled according to the considered period of the day
-cut = "largecut" # to be filled according to the cut type
+day = "20210713" # date to be filled
+hours = np.arange(11,16) # to be filled according to the considered period of the day
+cut = "swisscut" # to be filled according to the cut type
 plev = 4
 
 repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 for h in hours:
     fname_p = repo_path + cut + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
     fname_s = repo_path + cut + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
-    plot_zeta_plev(fname_p, fname_s, plev)
+    plot_zeta_plev(fname_p, fname_s, plev, w_th=10)
 
+#========================================================================================================================================
+## loop over every hourly time step of the case studies ##
 
+CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613', '20190614',
+            '20190820', '20210620', '20210708', '20210712', '20210713']
+CS_ranges = [np.arange(14,24), np.arange(14,23), np.arange(7,16), np.arange(10,17), np.arange(18,24), np.arange(16,21), np.arange(9,17),
+              np.arange(17,20), np.arange(18,24), np.arange(13,22), np.arange(13,19), np.arange(13,17), np.arange(17,20), np.arange(11,16)]
+cuts = ['largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut',
+        'swisscut', 'largecut', 'swisscut', 'swisscut']
+plevs = [3,4,5]
+w_ths = [5,10]
+repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 
-
+# mins = []
+# maxs = []
+for w_th in w_ths:
+    for plev in plevs:
+        for i, day in enumerate(CS_days):
+            for h in CS_ranges[i]:
+                fname_p = repo_path + cuts[i] + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
+                fname_s = repo_path + cuts[i] + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
+                plot_zeta_plev(fname_p, fname_s, plev, w_th=w_th, save=True)
+                # zeta = zeta_plev(fname_p, fname_s, plev)
+                # mins.append(np.nanmin(zeta))
+                # maxs.append(np.nanmax(zeta))
+# min(zeta) = -0.010068
+# max(zeta) = 0.01259  
 #========================================================================================================================================
 ## measure computing time of whole domain IUH 2D field determination ##
 
