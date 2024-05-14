@@ -266,14 +266,13 @@ def plot_zeta_plev(fname_p, fname_s, plev, w_th=None, save=False):
     plev : int
         index of the considered pressure level, ie index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
     w_th : float
-        updraught velocity threshold; the vorticity field will be plotted on the w > w_th patches
+        updraught velocity threshold; the vorticity field will be plotted on the w > w_th masks
     save : bool
         option to save the figure
 
     Returns
     -------
-    zeta : 2D array
-        relative vertical vorticity 2D field
+    plots zeta and saves the figure if requested
     """
     
     # zeta data
@@ -329,21 +328,91 @@ def plot_zeta_plev(fname_p, fname_s, plev, w_th=None, save=False):
     
     return
 
+
+def plot_w_plev(fname_p, fname_s, plev, save=False):
+    """
+    Plots the updraught velocity 2D field together with the vorticity contours over a given pressure level at a single time shot
+
+    Parameters
+    ----------
+    fname_p : str
+        path to the 1h 3D pressure file containing the wind fields
+    fname_s : str
+        path to the 1h 2D surface file containing the surface pressure
+    plev : int
+        index of the considered pressure level, ie index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
+    save : bool
+        option to save the figure
+
+    Returns
+    -------
+    plots w as well as the zeta contours and saves the figure if requested
+    """   
+    
+    # w, pressure level and static fields
+    with xr.open_dataset(fname_p) as dset:
+        lats = dset.variables['lat']
+        lons = dset.variables['lon']
+        p = int(dset.variables['pressure'][plev])
+        w = dset['W'][0][plev]
+    
+    with xr.open_dataset(fname_s) as dset:
+        ps = dset['PS'][0]
+    
+    # w
+    AGL_bin = ps > p
+    w = np.where(AGL_bin, w, np.nan) # convert the unphysical values ot nans
+    bounds_w = [3,4,5,7,9,11]
+    norm_w = BoundaryNorm(boundaries=bounds_w, ncolors=256, extend='max')
+    
+    # zeta 
+    zeta = zeta_plev(fname_p, fname_s, plev) # unphysical values already nans
+    zeta[np.abs(zeta)<0.0005] = np.nan # smoothen the background -> omit tiny values and turn masked values into nans
+    bounds_zeta = np.array([-4, 4])*1e-3 
+    
+    # timestamp
+    dtstr = fname_p[-18:-4] #adjust depending on the filename format !
+    dtobj = pd.to_datetime(dtstr, format="%Y%m%d%H%M%S")
+    dtdisp = dtobj.strftime("%d/%m/%Y %H:%M:%S")
+    
+    # load geographic features
+    resol = '10m'  # use data at this scale
+    bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
+    coastline = cfeature.NaturalEarthFeature('physical', 'coastline', scale=resol, facecolor='none')
+    rp = ccrs.RotatedPole(pole_longitude = -170, pole_latitude = 43)
+    
+    fig = plt.figure(figsize=(10,10))
+    ax = plt.axes(projection=rp)
+    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1, linewidth=0.2)
+    ax.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.2)
+    cont_w = ax.pcolormesh(lons, lats, w, cmap="Blues", norm=norm_w, transform=ccrs.PlateCarree())
+    cont_zeta = ax.contour(lons, lats, zeta, bounds_zeta, colors='r', linewidths=0.8, transform=ccrs.PlateCarree())
+    #ax.clabel(cont_zeta, inline=True, fontsize=8)
+    plt.colorbar(cont_w, orientation='horizontal', label=r"$w$ (m/s)")
+    
+    plt.title(dtdisp + " ; " + str(round(p/100)) +  r" hPa isobar ; $|\zeta|=0.004\,s^{-1}$ contours")
+    if save:
+        figname = "w_shade_zeta_cont_" + dtstr + "_" + str(round(p/100)) +  "hPa.png"
+        fig.savefig(figname, dpi=300)
+    
+    return
+
 #================================================================================================================================
 # MAIN
 #================================================================================================================================
 ## plot zeta on a pressure level ##
 
-day = "20210713" # date to be filled
-hours = np.arange(11,16) # to be filled according to the considered period of the day
-cut = "swisscut" # to be filled according to the cut type
-plev = 4
+# day = "20210713" # date to be filled
+# hours = np.arange(11,16) # to be filled according to the considered period of the day
+# cut = "swisscut" # to be filled according to the cut type
+# plev = 4
 
-repo_path = "/scratch/snx3000/mblanc/UHfiles/"
-for h in hours:
-    fname_p = repo_path + cut + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
-    fname_s = repo_path + cut + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
-    plot_zeta_plev(fname_p, fname_s, plev, w_th=10)
+# repo_path = "/scratch/snx3000/mblanc/UHfiles/"
+# for h in hours:
+#     fname_p = repo_path + cut + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
+#     fname_s = repo_path + cut + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
+#     #plot_zeta_plev(fname_p, fname_s, plev, w_th=10)
+#     plot_w_plev(fname_p, fname_s, plev)
 
 #========================================================================================================================================
 ## loop over every hourly time step of the case studies ##
@@ -355,21 +424,21 @@ CS_ranges = [np.arange(14,24), np.arange(14,23), np.arange(7,16), np.arange(10,1
 cuts = ['largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut',
         'swisscut', 'largecut', 'swisscut', 'swisscut']
 plevs = [3,4,5]
-w_ths = [5,10]
+#w_ths = [5,10]
 repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 
 # mins = []
 # maxs = []
-for w_th in w_ths:
-    for plev in plevs:
-        for i, day in enumerate(CS_days):
-            for h in CS_ranges[i]:
-                fname_p = repo_path + cuts[i] + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
-                fname_s = repo_path + cuts[i] + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
-                plot_zeta_plev(fname_p, fname_s, plev, w_th=w_th, save=True)
-                # zeta = zeta_plev(fname_p, fname_s, plev)
-                # mins.append(np.nanmin(zeta))
-                # maxs.append(np.nanmax(zeta))
+#for w_th in w_ths:
+for plev in plevs:
+    for i, day in enumerate(CS_days):
+        for h in CS_ranges[i]:
+            fname_p = repo_path + cuts[i] + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
+            fname_s = repo_path + cuts[i] + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
+            plot_w_plev(fname_p, fname_s, plev, save=True)
+            # zeta = zeta_plev(fname_p, fname_s, plev)
+            # mins.append(np.nanmin(zeta))
+            # maxs.append(np.nanmax(zeta))
 # min(zeta) = -0.010068
 # max(zeta) = 0.01259  
 #========================================================================================================================================
