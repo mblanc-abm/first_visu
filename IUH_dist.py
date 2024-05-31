@@ -1,4 +1,4 @@
-# This script aims at computing the IUH distribution accross whole domain during a convective day
+# This script computes the IUH, zeta and w distributions accross whole domain or a case study
 
 import numpy as np
 import pandas as pd
@@ -6,6 +6,7 @@ import pandas as pd
 import json
 from CaseStudies import IUH
 from matplotlib import pyplot as plt
+import os
 
 # FUNCTIONS
 #================================================================================================================================
@@ -43,11 +44,12 @@ def daily_IUH(day):
 def IUH_meso_CSs(CS_days, typ):
     """
     gather the IUH mean or max values of the case studies mesocyclones according to the requested type
+    compatible with SDT1 only
 
     Parameters
     ----------
     CS_days : str
-        day of the case study, "YYYYmmdd"
+        list of case studies days, "YYYYmmdd"
     typ : str
         "mean" or "max", type of the IUH parameter
 
@@ -69,6 +71,50 @@ def IUH_meso_CSs(CS_days, typ):
         
         for supercell in supercells:
             values.extend(supercell[typ + "_val"])
+        
+    return values
+
+
+def meso_supercell_variable_CSs(path, CS_days, variable, zeta_th, w_th):
+    """
+    gather the requested supercell or mesocyclone variable, given the SDT2 thresholds, encompassing all the case studies supercells
+    compatible with SDT2 only
+    
+    Parameters
+    ----------
+    path : str
+        path to the SDT2 supercell tracks
+    CS_days : str
+        list of case studies days, "YYYYmmdd"
+    variable : str
+        mesocyclone variables: "max_zeta", "mean_zeta", "max_w", "mean_w", "meso_max_hail", "area"
+        cell variables: "cell_max_hail", "cell_max_wind", "cell_max_rain"
+    zeta_th : str
+        vorticity threshold
+    w_th : str
+        updraught velocity threshold
+
+    Returns
+    -------
+    values : list of floats
+        list of the all the variable values of the case studies tracked supercells
+    """
+    
+    values = []
+    for day in CS_days:
+        
+        file = os.path.join(path, "supercell_zetath" + zeta_th + "_wth" + w_th + "_" + day + ".json")
+        
+        with open(file, "r") as read_file:
+            supercells = json.load(read_file)['supercell_data']
+        
+        for supercell in supercells:
+            SC_values = np.array(supercell[variable])
+            if np.any(SC_values == None):
+                SC_values[SC_values == None] = np.nan
+                SC_values = SC_values.astype(float)
+            if not np.all(np.isnan(SC_values)):
+                values.extend(SC_values)
         
     return values
 
@@ -123,8 +169,8 @@ def IUH_meso_domain(season, typ, skipped_days=None):
 ## EVERY GRID POINTS OF WHOLE DOMAIN ##
 
 #day = "20190611"
-CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613', '20190614',
-           '20190820', '20210620', '20210628', '20210629', '20210708', '20210712', '20210713']
+#CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613', '20190614',
+#            '20190820', '20210620', '20210628', '20210629', '20210708', '20210712', '20210713']
 #iuh_thresh = 50
 
 # # one histogram per CS day
@@ -184,6 +230,84 @@ CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610
 # plt.legend(loc='upper right')
 # plt.title("Aggregated case studies " + typ + " IUH")
 # fig.savefig("meso_" + typ + "_aggregated_CSs.png")
+
+#================================================================================================================================
+## CASE STUDIES MESOCYCLONE/SUPERCELL VARIABLES ##
+
+path = "/scratch/snx3000/mblanc/SDT/SDT2_output/current_climate/CaseStudies"
+CS_days = CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613',
+                     '20190614', '20190820', '20210620', '20210628', '20210629', '20210708', '20210712', '20210713']
+zeta_ths = np.array([4,5,6])*1e-3
+w_ths = [5,6,7]
+
+# # meso zeta and w, mean and max
+# for zeta_th in zeta_ths:
+#     for w_th in w_ths:
+#         zeta_th, w_th = str(zeta_th), str(w_th)
+        
+#         max_zeta = meso_supercell_variable_CSs(path, CS_days, "max_zeta", zeta_th, w_th)
+#         mean_zeta = meso_supercell_variable_CSs(path, CS_days, "mean_zeta", zeta_th, w_th)
+
+#         # histogram
+#         fig = plt.figure()
+#         plt.hist(max_zeta, bins=30, edgecolor='black', alpha=0.5, color='b', label="max")
+#         plt.hist(mean_zeta, bins=30, edgecolor='black', alpha=0.3, color='r', label="mean")
+#         plt.xlabel(r"$\zeta$ ($s^{-1}$)")
+#         plt.ylabel("frequency")
+#         plt.legend(loc='upper right')
+#         plt.title(r"$\zeta_{th}=$" + zeta_th + "; $w_{th}=$" + w_th)
+#         fig.savefig("meso_zeta_zetath"+zeta_th+"_wth"+w_th+".png")
+
+#         fig = plt.figure()
+#         plt.hist(np.abs(max_zeta), bins=30, edgecolor='black', alpha=0.5, color='b', label="max")
+#         plt.hist(np.abs(mean_zeta), bins=30, edgecolor='black', alpha=0.3, color='r', label="mean")
+#         plt.xlabel(r"$|\zeta|$ ($s^{-1}$)")
+#         plt.ylabel("frequency")
+#         plt.legend(loc='upper right')
+#         plt.title(r"$\zeta_{th}=$" + zeta_th + "; $w_{th}=$" + w_th)
+#         fig.savefig("meso_abszeta_zetath"+zeta_th+"_wth"+w_th+".png")
+
+#         max_w = meso_supercell_variable_CSs(path, CS_days, "max_w", zeta_th, w_th)
+#         mean_w = meso_supercell_variable_CSs(path, CS_days, "mean_w", zeta_th, w_th)
+
+#         fig = plt.figure()
+#         plt.hist(max_w, bins=30, edgecolor='black', alpha=0.5, color='b', label="max")
+#         plt.hist(mean_w, bins=30, edgecolor='black', alpha=0.3, color='r', label="mean")
+#         plt.xlabel(r"$w$ (m/s)")
+#         plt.ylabel("frequency")
+#         plt.legend(loc='upper right')
+#         plt.title(r"$\zeta_{th}=$" + zeta_th + "; $w_{th}=$" + w_th)
+#         fig.savefig("meso_w_zetath"+zeta_th+"_wth"+w_th+".png")
+
+# # meso area, meso max hail
+# cmap = plt.cm.tab10.colors
+# fig = plt.figure()
+# i = 0
+# for zeta_th in zeta_ths:
+#     for w_th in w_ths:
+#         zeta_th, w_th = str(zeta_th), str(w_th)
+#         meso_max_hail = meso_supercell_variable_CSs(path, CS_days, "meso_max_hail", zeta_th, w_th)
+#         plt.hist(meso_max_hail, bins=30, alpha=0.5, range=(5,50), edgecolor=cmap[i], label=r"$\zeta_{th}=$" + zeta_th + "; $w_{th}=$" + w_th, histtype='step')
+#         i += 1
+# plt.xlabel("meso max hail diameter (mm)")
+# plt.ylabel("frequency")
+# plt.legend(loc='upper right', fontsize=7)
+# fig.savefig("meso_max_hail.png")
+
+# cell max hail
+cmap = plt.cm.tab10.colors
+fig = plt.figure()
+i = 0
+for zeta_th in zeta_ths:
+    for w_th in w_ths:
+        zeta_th, w_th = str(zeta_th), str(w_th)
+        cell_max_rain = meso_supercell_variable_CSs(path, CS_days, "cell_max_rain", zeta_th, w_th)
+        plt.hist(cell_max_rain, bins=30, alpha=0.5, edgecolor=cmap[i], label=r"$\zeta_{th}=$" + zeta_th + "; $w_{th}=$" + w_th, histtype='step')
+        i += 1
+plt.xlabel("cell max rain rate (mm/h)")
+plt.ylabel("frequency")
+plt.legend(loc='upper right', fontsize=7)
+fig.savefig("cell_max_rain.png")
 
 #================================================================================================================================
 ## DOMAIN MESOCYCLONES ##
