@@ -86,11 +86,12 @@ print(round(float(np.min(lons)),2), round(float(np.max(lons)),2), round(float(np
 
 #==========================================================================================================================
  
-# hail cell masks
-with xr.open_dataset("/scratch/snx3000/mblanc/cell_tracker/outfiles/cell_masks_20130727.nc") as dset:
-    print(dset)
-    dset.variables.keys()
-    dset['cell_mask'][53].plot(cmap='jet')
+# rain masks
+with xr.open_dataset("/scratch/snx3000/mblanc/CT2/current_climate/outfiles/cell_masks_20181031.nc") as dset:
+    rain_masks = dset['cell_mask'] # 3D matrix
+    lons = dset["lon"].values
+    lats = dset["lat"].values
+    times = pd.to_datetime(dset['time'].values)
 
 # gap filled swath
 with xr.open_dataset("/store/c2sm/scclim/climate_simulations/present_day/hail_tracks/gap_filled_20190707.nc") as dset:
@@ -111,12 +112,16 @@ with open("/scratch/snx3000/mblanc/SDT1_output/CaseStudies/supercell_20190611.js
 print(dset['supercell_data'][11])
 
 # supercells info domain
-with open("/scratch/snx3000/mblanc/SDT1_output/seasons/2020/supercell_20200401.json", "r") as read_file:
+with open("/scratch/snx3000/mblanc/SDT/SDT2_output/current_climate/domain/supercell_20190620.json", "r") as read_file:
     dset = json.load(read_file)
-print(dset)
+print(dset['supercell_data'])
 
 #meso masks CS
 with xr.open_dataset("/scratch/snx3000/mblanc/SDT1_output/CaseStudies/meso_masks_20170801.nc") as dset:
+    print(dset)
+    
+#concatenated 2D files
+with xr.open_dataset("/scratch/snx3000/mblanc/SDT/infiles/CaseStudies/5min_2D/cut_HAILlffd20130729.nc") as dset:
     print(dset)
 
 #==========================================================================================================================

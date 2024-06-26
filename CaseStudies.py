@@ -412,7 +412,7 @@ def zeta_distribution_CSs(repo_path, CS_days, CS_ranges, cuts, plev, w_th=None):
     CS_ranges : list of integer ranges
         hourly ranges of the respective case studies, eg. np.arange(14,22)
     cuts : list of str
-        cuts of the respective case studies, ie "largecut" or "swisscut"
+        cuts of the respective case studies, used in the name of the 1h_2D and 1h_3D_plev files in UHfiles, ie "largecut" or "swisscut" or "cut"
     plev : int
         index of the considered pressure level, ie index in [200, 300, 400, 500, 600, 700, 850, 925] hPa
     w_th : float
@@ -492,60 +492,52 @@ def w_distribution_CSs(repo_path, CS_days, CS_ranges, cuts, plev, zeta_th=None):
 
 # repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 # CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613', '20190614',
-#             '20190820', '20210620', '20210708', '20210712', '20210713']
-# CS_ranges = [np.arange(14,24), np.arange(14,23), np.arange(7,16), np.arange(10,17), np.arange(18,24), np.arange(16,21), np.arange(9,17),
-#               np.arange(17,20), np.arange(18,24), np.arange(13,22), np.arange(13,19), np.arange(13,17), np.arange(17,20), np.arange(11,16)]
+#             '20190820', '20210620', '20210628', '20210629', '20210708', '20210712', '20210713']
+# CS_ranges = [np.arange(14,24), np.arange(14,23), np.arange(7,16), np.arange(10,17), np.arange(18,24), np.arange(16,21),
+#              np.arange(9,17), np.arange(17,20), np.arange(18,24), np.arange(13,22), np.arange(13,19), np.arange(10,22),
+#              np.arange(11,21), np.arange(13,17), np.arange(17,20), np.arange(11,16)]
 # cuts = ['largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut',
-#         'swisscut', 'largecut', 'swisscut', 'swisscut']
-# plevs = [3,4,5]
+#         'swisscut', 'cut', 'cut', 'largecut', 'swisscut', 'swisscut']
+# plevs = [2,6]
+# pstr = ['400', '850']
 # w_ths = [3,5,7,9]
 
 # for w_th in w_ths:
-#     for plev in plevs:
-#         if plev == 3:
-#             p = '500'
-#         elif plev == 4:
-#             p = '600'
-#         else:
-#             p = '700'
+#     for i, plev in enumerate(plevs):
 #         zeta_values = zeta_distribution_CSs(repo_path, CS_days, CS_ranges, cuts, plev, w_th=w_th)
 #         # histogram
 #         fig = plt.figure()
 #         plt.hist(np.abs(zeta_values), bins=30, edgecolor='black', alpha=0.6)
 #         plt.xlabel(r"$|\zeta|$ ($s^{-1}$)")
 #         plt.ylabel("frequency")
-#         plt.title(r"Aggregated case studies ; " + p + " hPa isobar ; w>" + str(w_th) + " m/s")
-#         fig.savefig("zeta_hist_CSs_" + p + "hPa_wth" + str(w_th) + ".png")
+#         plt.title(r"Aggregated case studies ; " + pstr[i] + " hPa isobar ; w>" + str(w_th) + " m/s")
+#         fig.savefig("zeta_hist_CSs_" + pstr[i] + "hPa_wth" + str(w_th) + ".png")
 
 #================================================================================================================================
 ## w histogram ##
 
 # repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 # CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613', '20190614',
-#             '20190820', '20210620', '20210708', '20210712', '20210713']
-# CS_ranges = [np.arange(14,24), np.arange(14,23), np.arange(7,16), np.arange(10,17), np.arange(18,24), np.arange(16,21), np.arange(9,17),
-#               np.arange(17,20), np.arange(18,24), np.arange(13,22), np.arange(13,19), np.arange(13,17), np.arange(17,20), np.arange(11,16)]
+#             '20190820', '20210620', '20210628', '20210629', '20210708', '20210712', '20210713']
+# CS_ranges = [np.arange(14,24), np.arange(14,23), np.arange(7,16), np.arange(10,17), np.arange(18,24), np.arange(16,21),
+#               np.arange(9,17), np.arange(17,20), np.arange(18,24), np.arange(13,22), np.arange(13,19), np.arange(10,22),
+#               np.arange(11,21), np.arange(13,17), np.arange(17,20), np.arange(11,16)]
 # cuts = ['largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut',
-#         'swisscut', 'largecut', 'swisscut', 'swisscut']
-# plevs = [3,4,5]
+#         'swisscut', 'cut', 'cut', 'largecut', 'swisscut', 'swisscut']
+# plevs = [2,6]
+# pstr = ['400', '850']
 # zeta_ths = [0.003, 0.004, 0.005, 0.006]
 
 # for zeta_th in zeta_ths:
-#     for plev in plevs:
-#         if plev == 3:
-#             p = '500'
-#         elif plev == 4:
-#             p = '600'
-#         else:
-#             p = '700'
+#     for i, plev in enumerate(plevs):
 #         w_values = w_distribution_CSs(repo_path, CS_days, CS_ranges, cuts, plev, zeta_th=zeta_th)
 #         # histogram
 #         fig = plt.figure()
 #         plt.hist(w_values, bins=30, edgecolor='black', alpha=0.6)
 #         plt.xlabel(r"$w$ (m/s)")
 #         plt.ylabel("frequency")
-#         plt.title(r"Aggregated case studies ; " + p + r" hPa isobar ; $|\zeta|$>" + str(zeta_th) + r" $s^{-1}$")
-#         fig.savefig("w_hist_CSs_" + p + "hPa_zetath" + str(zeta_th) + ".png")
+#         plt.title(r"Aggregated case studies ; " + pstr[i] + r" hPa isobar ; $|\zeta|$>" + str(zeta_th) + r" $s^{-1}$")
+#         fig.savefig("w_hist_CSs_" + pstr[i] + "hPa_zetath" + str(zeta_th) + ".png")
 
 #================================================================================================================================
 ## plot zeta on a pressure level ##
@@ -565,30 +557,21 @@ def w_distribution_CSs(repo_path, CS_days, CS_ranges, cuts, plev, zeta_th=None):
 #========================================================================================================================================
 ## loop over every hourly time step of the case studies ##
 
-# CS_days = ['20120630', '20130727', '20130729', '20140625', '20170801', '20190610', '20190611', '20190613', '20190614',
-#             '20190820', '20210620', '20210708', '20210712', '20210713']
-# CS_ranges = [np.arange(14,24), np.arange(14,23), np.arange(7,16), np.arange(10,17), np.arange(18,24), np.arange(16,21), np.arange(9,17),
-#               np.arange(17,20), np.arange(18,24), np.arange(13,22), np.arange(13,19), np.arange(13,17), np.arange(17,20), np.arange(11,16)]
-# cuts = ['largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut', 'largecut',
-#         'swisscut', 'largecut', 'swisscut', 'swisscut']
-# plevs = [3,4,5]
-# #w_ths = [5,10]
+# plevs = [2,6]
+# w_ths = [5,10]
 # repo_path = "/scratch/snx3000/mblanc/UHfiles/"
 
-# # mins = []
-# # maxs = []
-# #for w_th in w_ths:
-# for plev in plevs:
-#     for i, day in enumerate(CS_days):
-#         for h in CS_ranges[i]:
-#             fname_p = repo_path + cuts[i] + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
-#             fname_s = repo_path + cuts[i] + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
-#             plot_w_plev(fname_p, fname_s, plev, save=True)
-#             # zeta = zeta_plev(fname_p, fname_s, plev)
-#             # mins.append(np.nanmin(zeta))
-#             # maxs.append(np.nanmax(zeta))
-# min(zeta) = -0.010068
-# max(zeta) = 0.01259  
+
+# for w_th in w_ths:
+#     for plev in plevs:
+#         for i, day in enumerate(CS_days):
+#             for h in CS_ranges[i]:
+#                 fname_p = repo_path + cuts[i] + "_lffd" + day + str(h).zfill(2) + "0000p.nc"
+#                 fname_s = repo_path + cuts[i] + "_PSlffd" + day + str(h).zfill(2) + "0000.nc"
+#                 plot_zeta_plev(fname_p, fname_s, plev, w_th=w_th, save=True)
+#                 #plot_w_plev(fname_p, fname_s, plev, save=True)
+#                 # zeta = zeta_plev(fname_p, fname_s, plev)
+
 #========================================================================================================================================
 ## measure computing time of whole domain IUH 2D field determination ##
 

@@ -103,6 +103,7 @@ def plot_IUH(fname, nlev):
     
     resol = '10m'  # use data at this scale
     bodr = cfeature.NaturalEarthFeature(category='cultural', name='admin_0_boundary_lines_land', scale=resol, facecolor='none', alpha=0.5)
+    coastline = cfeature.NaturalEarthFeature('physical', 'coastline', scale=resol, facecolor='none')
     #land = cfeature.NaturalEarthFeature('physical', 'land', scale=resol, edgecolor='k', facecolor=cfeature.COLORS['land'])
     #ocean = cfeature.NaturalEarthFeature('physical', 'ocean', scale=resol, edgecolor='none', facecolor=cfeature.COLORS['water'])
     #lakes = cfeature.NaturalEarthFeature('physical', 'lakes', scale=resol, edgecolor='b', facecolor=cfeature.COLORS['water'])
@@ -121,7 +122,8 @@ def plot_IUH(fname, nlev):
     #ax.add_feature(ocean, linewidth=0.2)
     #ax.add_feature(lakes)
     #ax.add_feature(rivers, linewidth=0.2)
-    ax.add_feature(bodr, linestyle='-', edgecolor='k', alpha=1)
+    ax.add_feature(bodr, linestyle='-', edgecolor='k', linewidth=0.2)
+    ax.add_feature(coastline, linestyle='-', edgecolor='k', linewidth=0.4)
     plt.colorbar(orientation='horizontal', label="775-550 hPa IUH (m^2/s^2)")
     plt.title(dtdisp)
 
